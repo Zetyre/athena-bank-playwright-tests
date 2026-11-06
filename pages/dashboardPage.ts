@@ -24,7 +24,8 @@ export class DashboardPage {
     this.totalBalanceLabel = page.getByTestId('saldo-total-dashboard-label');
     this.accountType = page.getByTestId('tipo-cuenta');
     this.accountBalance = page.getByTestId('saldo-cuenta');
-    this.freezeAccountButton = page.getByTestId('boton-congelar-cuenta');
+    // The freeze dialog's confirm button reuses this test id, so scope it to the account card.
+    this.freezeAccountButton = page.getByTestId('tarjeta-cuenta').getByTestId('boton-congelar-cuenta');
     this.addFundsButton = page.getByTestId('boton-agregar-fondos');
   }
 

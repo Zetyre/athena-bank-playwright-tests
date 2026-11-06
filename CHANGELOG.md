@@ -15,6 +15,16 @@ All notable changes to this project are documented here. The format follows
   (redux-athena-bank#10 to #14).
 - `mobile-chrome` (Pixel 7) and `mobile-safari` (iPhone 14) projects run the smoke suite on emulated phones,
   locally and as two more CI matrix jobs.
+- Coverage of every remaining app feature (TC-063 to TC-085): account types, deposits, freezing and unfreezing,
+  closing accounts, the transaction history, frozen accounts in transfers, ownership checks, amounts sent as
+  text, fractions of a cent, malformed ids, the session after logout or with a rejected token, the total
+  balance, the create-account form, and stored HTML in user data.
+- TC-085 automates the concurrent-transfer defect (redux-athena-bank#2), until now reproduced only by hand.
+- Eight more defects documented as `test.fail()` known bugs, with annotated screenshots
+  (redux-athena-bank#15 to #22).
+- Page objects for the add-funds, freeze and delete dialogs, and API client methods for deposits, freezing,
+  deleting, the history and logout.
+- README: what is deliberately not tested, and why.
 
 ## [1.1.0] - 2026-11-06
 

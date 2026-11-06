@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from '../../fixtures';
 import type { AuthResponse } from '../../types/api';
+import { knownBug } from '../../utils/knownBug';
 import { apiUrl } from '../../utils/urls';
 
 test.describe('Login', () => {
@@ -181,6 +182,30 @@ test.describe('Session', () => {
       await expect(page.evaluate(() => localStorage.getItem('jwt'))).resolves.toBeFalsy();
       await page.goto('/dashboard');
       await expect(page).toHaveURL(/\/login$/);
+      await expect(loginPage.title).toBeVisible();
+    },
+  );
+
+  test(
+    'TC-083: A stored token the server rejects sends the user back to the login page',
+    knownBug({
+      issue: 'Zetyre/redux-athena-bank#20',
+      summary:
+        'App defect: RequireAuth only checks that a token exists, and the dashboard turns a 401 into two error ' +
+        'toasts, so an expired or revoked session leaves the user on an empty dashboard.',
+      fails: /Expected pattern: \/\\\/login\$\/[\s\S]*Received string:\s+"[^"]*\/dashboard"/,
+    }),
+    async ({ page, loginPage }) => {
+      test.fail();
+      await page.addInitScript(() => window.localStorage.setItem('jwt', 'expired-or-revoked-token'));
+      const accountsRejected = page.waitForResponse(
+        response => new URL(response.url()).pathname === '/api/accounts' && response.status() === 401,
+      );
+
+      await page.goto('/dashboard');
+      await accountsRejected;
+
+      await expect(page).toHaveURL(/\/login$/, { timeout: 5_000 });
       await expect(loginPage.title).toBeVisible();
     },
   );

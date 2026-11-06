@@ -1,5 +1,7 @@
 import { test as base, expect, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
+import { DeleteAccountModal, FreezeAccountModal } from '../pages/accountDialogs';
+import { AddFundsModal } from '../pages/addFundsModal';
 import { CreateAccountModal } from '../pages/createAccountModal';
 import { DashboardPage } from '../pages/dashboardPage';
 import { LoginPage } from '../pages/loginPage';
@@ -32,6 +34,9 @@ type Fixtures = {
   dashboardPage: DashboardPage;
   createAccountModal: CreateAccountModal;
   sendMoneyModal: SendMoneyModal;
+  addFundsModal: AddFundsModal;
+  freezeAccountModal: FreezeAccountModal;
+  deleteAccountModal: DeleteAccountModal;
 };
 
 export const test = base.extend<Fixtures>({
@@ -106,6 +111,15 @@ export const test = base.extend<Fixtures>({
   },
   sendMoneyModal: async ({ page }, use) => {
     await use(new SendMoneyModal(page));
+  },
+  addFundsModal: async ({ page }, use) => {
+    await use(new AddFundsModal(page));
+  },
+  freezeAccountModal: async ({ page }, use) => {
+    await use(new FreezeAccountModal(page));
+  },
+  deleteAccountModal: async ({ page }, use) => {
+    await use(new DeleteAccountModal(page));
   },
 });
 

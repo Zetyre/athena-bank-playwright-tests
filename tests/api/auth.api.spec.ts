@@ -243,3 +243,25 @@ test.describe('Auth API: boundaries and abuse', () => {
     );
   }
 });
+
+test.describe('Auth API: session', () => {
+  test(
+    'TC-076: A token stops working after the user logs out',
+    knownBug({
+      issue: 'Zetyre/redux-athena-bank#21',
+      summary:
+        'App defect: logout only clears a cookie the app never sets; the JWT stays valid for its full 7 days, ' +
+        'so a copied token keeps working after the user logs out.',
+      fails: /Accounts read with the token after logout[\s\S]*Expected: 401\s+Received: 200/,
+    }),
+    async ({ api, createUser }) => {
+      test.fail();
+      const user = await createUser({ initialBalance: null });
+      const { token } = (await (await api.login(user)).json()) as AuthResponse;
+
+      expect((await api.logout()).status()).toBe(200);
+
+      expect((await api.getAccounts(token)).status(), 'Accounts read with the token after logout').toBe(401);
+    },
+  );
+});

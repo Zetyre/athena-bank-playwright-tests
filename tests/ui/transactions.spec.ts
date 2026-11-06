@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { expect, test } from '../../fixtures';
 
 test.describe('Accounts and transfers', () => {
@@ -108,6 +109,33 @@ test.describe('Accounts and transfers', () => {
         await expect(incoming).toHaveCount(1);
         await expect(receiverDashboard.transactionAmount(incoming)).toContainText(amount.toFixed(2));
       });
+    },
+  );
+
+  test(
+    "TC-084: HTML in another user's name and email is shown as text, never run",
+    { tag: '@regression' },
+    async ({ page, api, loginAs, createUser }) => {
+      // Sign-up accepts any text as the email (redux-athena-bank#14), and the receiver's history shows the sender's
+      // email, so it is a path for stored cross-site scripting into another user's dashboard.
+      const payload = '<img src=x onerror="window.__xss=1">';
+      const sender = await createUser({
+        initialBalance: 100,
+        overrides: { firstName: '<script>window.__xss=1</script>', email: `${payload}${randomUUID()}@example.com` },
+      });
+      const receiver = await createUser({ initialBalance: 0 });
+      const transfer = await api.transfer(sender.token, {
+        fromAccountId: sender.account!._id,
+        toEmail: receiver.email,
+        amount: 5,
+      });
+      expect(transfer.status()).toBe(200);
+
+      const dashboard = await loginAs(receiver);
+
+      await expect(dashboard.transaction(`Transferencia de ${sender.email}`)).toHaveCount(1);
+      await expect(dashboard.transactionItems.locator('img, script')).toHaveCount(0);
+      expect(await page.evaluate(() => (window as { __xss?: number }).__xss)).toBeUndefined();
     },
   );
 });

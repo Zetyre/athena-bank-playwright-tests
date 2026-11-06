@@ -21,11 +21,38 @@ export class AthenaApi {
     return this.request.get(apiUrl('/api/accounts'), { headers: authHeader(token) });
   }
 
-  createAccount(token: string, type: AccountType, initialAmount: number): Promise<APIResponse> {
+  createAccount(token: string, type: AccountType, initialAmount: unknown): Promise<APIResponse> {
     return this.request.post(apiUrl('/api/accounts'), {
       headers: authHeader(token),
       data: { type, initialAmount },
     });
+  }
+
+  deposit(token: string, accountId: string, amount: unknown): Promise<APIResponse> {
+    return this.request.post(apiUrl(`/api/accounts/${accountId}/deposit`), {
+      headers: authHeader(token),
+      data: { amount },
+    });
+  }
+
+  freeze(token: string, accountId: string, isFrozen: boolean): Promise<APIResponse> {
+    return this.request.put(apiUrl(`/api/accounts/${accountId}/freeze`), {
+      headers: authHeader(token),
+      data: { isFrozen },
+    });
+  }
+
+  deleteAccount(token: string, accountId: string): Promise<APIResponse> {
+    return this.request.delete(apiUrl(`/api/accounts/${accountId}`), { headers: authHeader(token) });
+  }
+
+  getTransactions(token?: string): Promise<APIResponse> {
+    return this.request.get(apiUrl('/api/transactions'), { headers: authHeader(token) });
+  }
+
+  /** Logs out the way the app does: the request carries no token, only cookies. */
+  logout(): Promise<APIResponse> {
+    return this.request.post(apiUrl('/api/auth/logout'));
   }
 
   transfer(token: string, transfer: TransferRequest): Promise<APIResponse> {
