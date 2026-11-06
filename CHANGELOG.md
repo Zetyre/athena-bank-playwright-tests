@@ -5,6 +5,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Login and sign-up boundary and abuse coverage (TC-052 to TC-062): empty and malformed input blocked by the
+  form, masked password, busy login button, login page at 320px, 10,000-character and oversized input,
+  passwords longer than 72 characters, non-string credentials, brute-force lockout, email letter case, and
+  sign-up data validation.
+- Five login and sign-up defects documented as `test.fail()` known bugs, with annotated screenshots
+  (redux-athena-bank#10 to #14).
+- `mobile-chrome` (Pixel 7) and `mobile-safari` (iPhone 14) projects run the smoke suite on emulated phones,
+  locally and as two more CI matrix jobs.
+
 ## [1.1.0] - 2026-11-06
 
 Accessibility coverage, documented defects and a reporter that keeps known bugs apart from real passes.

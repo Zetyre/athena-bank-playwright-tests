@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { expect, test } from '../../fixtures';
 import type { AuthResponse } from '../../types/api';
 import { apiUrl } from '../../utils/urls';
@@ -61,6 +62,99 @@ test.describe('Login', () => {
     },
   );
 });
+
+test.describe('Login form validation', () => {
+  test.beforeEach(async ({ loginPage }) => {
+    await loginPage.goto();
+  });
+
+  test(
+    'TC-052: Submitting the empty login form sends no request and flags the email as required',
+    { tag: '@regression' },
+    async ({ page, loginPage }) => {
+      const loginRequests = trackLoginRequests(page);
+
+      await loginPage.loginButton.click();
+
+      await expect
+        .poll(() => loginPage.emailInput.evaluate((input: HTMLInputElement) => input.validity.valueMissing))
+        .toBe(true);
+      await expect(page).toHaveURL(/\/login$/);
+      expect(loginRequests()).toBe(0);
+    },
+  );
+
+  test(
+    'TC-053: A malformed email is rejected by the form before any request is sent',
+    { tag: '@regression' },
+    async ({ page, loginPage }) => {
+      const loginRequests = trackLoginRequests(page);
+
+      await loginPage.login({ email: 'not-an-email', password: 'Password123!' });
+
+      await expect
+        .poll(() => loginPage.emailInput.evaluate((input: HTMLInputElement) => input.validity.typeMismatch))
+        .toBe(true);
+      await expect(page).toHaveURL(/\/login$/);
+      expect(loginRequests()).toBe(0);
+    },
+  );
+
+  test('TC-054: The password is masked while it is typed', { tag: '@regression' }, async ({ page, loginPage }) => {
+    const password = 'Visible-Secret-123';
+
+    await loginPage.passwordInput.fill(password);
+
+    await expect(loginPage.passwordInput).toHaveAttribute('type', 'password');
+    await expect(loginPage.passwordInput).toHaveValue(password);
+    await expect(page.getByText(password)).toHaveCount(0);
+  });
+
+  test(
+    'TC-055: The login button is disabled and shows progress while the login request is pending',
+    { tag: '@regression' },
+    async ({ page, loginPage, dashboardPage, createUser }) => {
+      const user = await createUser({ initialBalance: null });
+      let release!: () => void;
+      const released = new Promise<void>(resolve => (release = resolve));
+      await page.route(apiUrl('/api/auth/login'), async route => {
+        await released;
+        await route.continue();
+      });
+
+      await loginPage.login(user);
+
+      await expect(loginPage.loginButton).toBeDisabled();
+      await expect(loginPage.loginButton).toHaveText('Iniciando sesión...');
+      release();
+      await expect(dashboardPage.title).toBeVisible();
+    },
+  );
+
+  test(
+    'TC-062: The login page fits a 320px-wide screen without horizontal scrolling',
+    { tag: '@regression' },
+    async ({ page, loginPage }) => {
+      await page.setViewportSize({ width: 320, height: 640 });
+      await loginPage.goto();
+
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow, 'Pixels the page is wider than a 320px viewport').toBe(0);
+      await expect(loginPage.loginButton).toBeInViewport();
+    },
+  );
+});
+
+/** Counts requests to the login endpoint from now on. */
+function trackLoginRequests(page: Page): () => number {
+  let count = 0;
+  page.on('request', request => {
+    if (request.url() === apiUrl('/api/auth/login')) count++;
+  });
+  return () => count;
+}
 
 test.describe('Session', () => {
   test(

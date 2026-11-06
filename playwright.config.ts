@@ -48,5 +48,18 @@ export default defineConfig({
       testDir: './tests/ui',
       use: { ...devices['Desktop Safari'] },
     },
+    // Phone emulation (viewport, touch, user agent) runs the smoke suite: the critical flows must work on a phone.
+    {
+      name: 'mobile-chrome',
+      testDir: './tests/ui',
+      grep: /@smoke/,
+      use: { ...devices['Pixel 7'] },
+    },
+    {
+      name: 'mobile-safari',
+      testDir: './tests/ui',
+      grep: /@smoke/,
+      use: { ...devices['iPhone 14'] },
+    },
   ],
 });

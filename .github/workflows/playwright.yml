@@ -60,7 +60,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [api, chromium, firefox, webkit]
+        # mobile-chrome and mobile-safari emulate phones and run only the smoke suite (see playwright.config.ts).
+        project: [api, chromium, firefox, webkit, mobile-chrome, mobile-safari]
     container:
       image: mcr.microsoft.com/playwright:v${{ needs.quality.outputs.playwright-version }}-noble
       options: --ipc=host
