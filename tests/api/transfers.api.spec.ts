@@ -2,7 +2,7 @@ import type { APIResponse } from '@playwright/test';
 import { expect, test } from '../../fixtures';
 import type { Account, BankUser, ErrorResponse } from '../../types/api';
 import type { AthenaApi } from '../../utils/athenaApi';
-import { knownBug } from '../../utils/knownBug';
+import { knownIssue } from '../../utils/knownIssue';
 import { apiUrl } from '../../utils/urls';
 import { buildUser } from '../../utils/userFactory';
 
@@ -135,11 +135,13 @@ test.describe('Transfers API', () => {
 
   test(
     'TC-036: A transfer to your own account does not change the balance',
-    knownBug({
+    knownIssue({
+      kind: 'bug',
       issue: 'Zetyre/redux-athena-bank#1',
       summary:
-        'App defect: routes/transactions.js loads the same account twice as sender and recipient and saves both, ' +
+        'Routes/transactions.js loads the same account twice as sender and recipient and saves both, ' +
         'so a self-transfer of X credits the account by X.',
+      basis: 'a transfer moves money between accounts and never changes the total held: money is conserved.',
       fails: /Expected: 1000\s+Received: 1100/,
     }),
     async ({ api, createUser }) => {
@@ -184,11 +186,13 @@ test.describe('Transfers API: frozen accounts and amount types', () => {
 
   test(
     'TC-074: A transfer amount sent as text credits the receiver by that amount',
-    knownBug({
-      issue: 'Zetyre/redux-athena-bank#15',
+    knownIssue({
+      kind: 'bug',
+      issue: 'Zetyre/redux-athena-bank#12',
       summary:
-        'App defect: the transfer handler does recipient.balance += amount without converting amount to a ' +
+        'The transfer handler does recipient.balance += amount without converting amount to a ' +
         'number, so "100" is appended as text: the receiver\'s 1000 becomes 1000100 while the sender loses 100.',
+      basis: 'an amount of 100 must add 100; appending it as text creates money.',
       fails: /Expected: 1100\s+Received: 1000100/,
     }),
     async ({ request, api, createUser }) => {
@@ -210,11 +214,14 @@ test.describe('Transfers API: frozen accounts and amount types', () => {
 
   test(
     'TC-085: Simultaneous transfers of the whole balance: only one succeeds',
-    knownBug({
+    knownIssue({
+      kind: 'bug',
       issue: 'Zetyre/redux-athena-bank#2',
       summary:
-        'App defect: the transfer handler reads the balance, checks it and saves it in separate steps, so ' +
+        'The transfer handler reads the balance, checks it and saves it in separate steps, so ' +
         'simultaneous transfers all pass the check; each is recorded but only one balance update survives.',
+      basis:
+        'the handler\'s own balance check ("Insufficient funds") must hold for every transfer, so five transfers of the whole balance cannot all succeed.',
       fails: /Successful transfers of the whole balance[\s\S]*Expected: 1\s+Received: [2-5]/,
     }),
     async ({ api, createUser }) => {

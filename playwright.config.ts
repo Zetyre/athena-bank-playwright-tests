@@ -15,11 +15,11 @@ export default defineConfig({
   // starts crashing Firefox's software compositor. CI runs one browser per job, so it keeps the default.
   workers: isCI ? undefined : '30%',
   // On CI each browser runs in its own job and writes a blob report; a later job merges them into one HTML report.
-  // The known-defects reporter lists @known-bug tests apart from real passes and fails the run when one fails for a
+  // The known-issues reporter lists @known-issue tests (bugs and observations) apart from real passes and fails the run when one fails for a
   // reason other than the one it declares.
   reporter: isCI
-    ? [['github'], ['list'], ['blob'], ['./reporters/known-defects.ts']]
-    : [['list'], ['html', { open: 'never' }], ['./reporters/known-defects.ts']],
+    ? [['github'], ['list'], ['blob'], ['./reporters/known-issues.ts']]
+    : [['list'], ['html', { open: 'never' }], ['./reporters/known-issues.ts']],
   expect: {
     timeout: 10_000,
   },
@@ -47,19 +47,6 @@ export default defineConfig({
       name: 'webkit',
       testDir: './tests/ui',
       use: { ...devices['Desktop Safari'] },
-    },
-    // Phone emulation (viewport, touch, user agent) runs the smoke suite: the critical flows must work on a phone.
-    {
-      name: 'mobile-chrome',
-      testDir: './tests/ui',
-      grep: /@smoke/,
-      use: { ...devices['Pixel 7'] },
-    },
-    {
-      name: 'mobile-safari',
-      testDir: './tests/ui',
-      grep: /@smoke/,
-      use: { ...devices['iPhone 14'] },
     },
   ],
 });

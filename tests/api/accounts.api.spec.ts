@@ -1,7 +1,7 @@
 import { expect, test } from '../../fixtures';
 import type { Account, AccountType, BankUser, ErrorResponse, Transaction } from '../../types/api';
 import type { AthenaApi } from '../../utils/athenaApi';
-import { knownBug } from '../../utils/knownBug';
+import { knownIssue } from '../../utils/knownIssue';
 import { apiUrl } from '../../utils/urls';
 
 test.describe('Accounts API', () => {
@@ -75,11 +75,14 @@ test.describe('Accounts API: opening accounts', () => {
 
   test(
     'TC-065: Opening an account with a negative balance is rejected',
-    knownBug({
-      issue: 'Zetyre/redux-athena-bank#16',
+    knownIssue({
+      kind: 'bug',
+      issue: 'Zetyre/redux-athena-bank#13',
       summary:
         'App defect: POST /api/accounts stores initialAmount as given, so an account can start in debt ' +
         '(the form blocks it, the API does not).',
+      basis:
+        'the app\'s own create-account form rejects negative amounts ("Monto debe ser un número mayor o igual a 0"), so the API should not accept them either.',
       fails: /Expected: 400\s+Received: 201/,
     }),
     async ({ api, createUser }) => {
@@ -112,10 +115,10 @@ test.describe('Accounts API: deposits', () => {
   );
 
   for (const [name, status, message, setUp] of [
-    ['an amount of 0', 400, 'Invalid amount', () => Promise.resolve({ amount: 0 })],
-    ['a negative amount', 400, 'Invalid amount', () => Promise.resolve({ amount: -5 })],
+    ['A deposit of 0', 400, 'Invalid amount', () => Promise.resolve({ amount: 0 })],
+    ['A negative deposit', 400, 'Invalid amount', () => Promise.resolve({ amount: -5 })],
     [
-      'a frozen account',
+      'A deposit to a frozen account',
       400,
       'Account is frozen',
       async (api: AthenaApi, user: BankUser) => {
@@ -124,7 +127,7 @@ test.describe('Accounts API: deposits', () => {
       },
     ],
   ] as const) {
-    test(`TC-067: A deposit to ${name} is rejected`, { tag: '@regression' }, async ({ api, createUser }) => {
+    test(`TC-067: ${name} is rejected`, { tag: '@regression' }, async ({ api, createUser }) => {
       const user = await createUser({ initialBalance: 1000 });
       const { amount } = await setUp(api, user);
 
@@ -138,11 +141,13 @@ test.describe('Accounts API: deposits', () => {
 
   test(
     'TC-068: A deposit amount sent as text is added as a number',
-    knownBug({
-      issue: 'Zetyre/redux-athena-bank#15',
+    knownIssue({
+      kind: 'bug',
+      issue: 'Zetyre/redux-athena-bank#12',
       summary:
-        'App defect: the deposit and transfer handlers do balance += amount without converting amount to a ' +
+        'The deposit and transfer handlers do balance += amount without converting amount to a ' +
         'number, so "100" is appended as text: 1000 becomes 1000100.',
+      basis: 'an amount of 100 must add 100; appending it as text creates money.',
       fails: /Expected: 1100\s+Received: 1000100/,
     }),
     async ({ api, createUser }) => {
@@ -155,18 +160,21 @@ test.describe('Accounts API: deposits', () => {
     },
   );
 
-  const centsBug = (fails: RegExp) =>
-    knownBug({
-      issue: 'Zetyre/redux-athena-bank#17',
+  const centsIssue = (fails: RegExp) =>
+    knownIssue({
+      kind: 'bug',
+      issue: 'Zetyre/redux-athena-bank#14',
       summary:
-        'App defect: balances are binary floating-point numbers and amounts are not limited to cents, so ' +
+        'Balances are binary floating-point numbers and amounts are not limited to cents, so ' +
         'sums drift (0.1 + 0.2 = 0.30000000000000004) and fractions of a cent are accepted.',
+      basis:
+        'money is counted in cents: 0.10 + 0.20 is 0.30, and the history and the balance must agree (two "+ 0.00" deposits move the balance a cent).',
       fails,
     });
 
   test(
     'TC-069: Deposits of 0.10 and 0.20 add up to exactly 0.30',
-    centsBug(/Expected: 0\.3\s+Received: 0\.30000000000000004/),
+    centsIssue(/Expected: 0\.3\s+Received: 0\.30000000000000004/),
     async ({ api, createUser }) => {
       test.fail();
       const user = await createUser({ initialBalance: 0 });
@@ -180,7 +188,7 @@ test.describe('Accounts API: deposits', () => {
 
   test(
     'TC-069: A deposit of a fraction of a cent is rejected',
-    centsBug(/Expected: 400\s+Received: 200/),
+    centsIssue(/Expected: 400\s+Received: 200/),
     async ({ api, createUser }) => {
       test.fail();
       const user = await createUser({ initialBalance: 0 });
@@ -214,11 +222,13 @@ test.describe('Accounts API: ownership, freezing and closing', () => {
 
   test(
     'TC-071: An account that still holds money cannot be deleted',
-    knownBug({
-      issue: 'Zetyre/redux-athena-bank#18',
+    knownIssue({
+      kind: 'observation',
+      issue: 'OBS-4',
       summary:
         'App defect: DELETE /api/accounts/:id deletes an account whatever its balance; the money is gone and ' +
         'the dialog gives no warning.',
+      basis: 'banking practice: an account that holds money is not closed without moving or confirming the funds.',
       fails: /Expected: 400\s+Received: 200/,
     }),
     async ({ api, createUser }) => {
@@ -231,11 +241,14 @@ test.describe('Accounts API: ownership, freezing and closing', () => {
     },
   );
 
-  const malformedIdBug = knownBug({
-    issue: 'Zetyre/redux-athena-bank#22',
+  const malformedIdIssue = knownIssue({
+    kind: 'bug',
+    issue: 'Zetyre/redux-athena-bank#17',
     summary:
-      'App defect: a malformed account id reaches Mongoose unchecked; transfer and delete answer 500 with the ' +
+      'A malformed account id reaches Mongoose unchecked; transfer and delete answer 500 with the ' +
       'internal CastError message.',
+    basis:
+      'a malformed id is a client error: the API answers 404 for a well-formed unknown id, and a 500 means the server failed.',
     fails: /Status for a malformed account id[\s\S]*Received: {3}500/,
   });
 
@@ -249,7 +262,7 @@ test.describe('Accounts API: ownership, freezing and closing', () => {
   ] as const) {
     test(
       `TC-072: A malformed account id in ${name} returns a client error, not 500`,
-      malformedIdBug,
+      malformedIdIssue,
       async ({ api, createUser }) => {
         test.fail();
         const user = await createUser();

@@ -6,39 +6,35 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-UI and API test automation for **Athena Bank**, a demo banking app (React + Vite frontend, Node/Express backend,
-MongoDB). The suite covers every feature of the app (sign-up, login, sessions, accounts, deposits, freezing,
-closing accounts, transfers and the transaction history) at the API layer and
-end-to-end in Chromium, Firefox and WebKit and on emulated phones, plus automated WCAG 2.2 AA accessibility
-checks.
+UI and API test automation for **Athena Bank**, a demo banking app built for practising test automation (React +
+Vite frontend, Node/Express backend, MongoDB). The suite covers every feature of the app: sign-up, login, sessions,
+accounts, deposits, freezing, closing accounts, transfers and the transaction history, at the API layer and
+end-to-end in Chromium, Firefox and WebKit, plus WCAG 2.2 AA accessibility scans.
 
-- **85 test cases, 114 tests** (56 API + 58 UI × 3 browsers + 7 smoke × 2 phones = 244 executions, about two
-  minutes locally), tagged `@smoke` / `@regression`
-- **Accessibility audit:** axe-core (WCAG 2.2 AA) scans of the login, sign-up and dashboard pages and the main
-  dialogs, contrast measured on the rendered pixels, keyboard access, autofill purpose, page language and titles
+- **79 test cases, 97 tests** (56 API + 41 UI × 3 browsers = 179 runs, two to three minutes locally), tagged
+  `@smoke` / `@regression`
 - **Fully parallel, no retries locally:** every test creates its own users through the API
-- **Found 22 real defects** in the app: six that create, lose or misstate money, seven in authentication,
-  sessions and input handling, two more in the dashboard, and seven accessibility failures, each reported with
-  steps to reproduce and annotated screenshots
-  ([known app defects](#known-app-defects))
+- **Found 13 bugs and 9 observations** in the app, each with steps to reproduce and annotated screenshots
+  ([known issues](#known-issues))
+- **Every test documented:** what it checks, where its expected result comes from and how it is built, in the
+  [test case catalogue](docs/test-cases.md)
 - **Every run on `main` is published:** [browse the report archive](https://zetyre.github.io/athena-bank-playwright-tests/)
 
 ## Why this project
 
-This started as a Playwright workshop exercise, and I rebuilt it as the kind of framework I'd want a team to adopt.
-The goal was a suite whose result you can trust:
+This started as a Playwright workshop exercise, and I rebuilt it as the kind of framework I'd want a team to adopt:
+a suite whose result you can trust.
 
-- **No false failures.** Tests share no state, so a red run means a real problem, not a collision between tests
-  or browsers. The suite runs fully parallel with no retries locally.
-- **No false passes.** Lint rules block missing `await`s and fixed waits, tests assert outcomes instead of "page
-  loaded", and a single required check blocks merging when any browser fails.
-- **Failures that explain themselves.** Every failure keeps a trace, a screenshot and a job summary, and every
-  run on `main` lands in a public report archive.
-- **Testing that finds bugs, not just checks screens.** Negative, boundary, type and concurrency tests at the API
-  found money being created or destroyed, session and authentication weaknesses, and the accessibility audit
-  found seven more defects. Each is reported as an issue with steps to reproduce, screenshots and root cause.
-- **Lean on purpose.** A test is added when it can find a defect or protects a critical flow; see
-  [what is not tested, and why](#not-tested-on-purpose).
+- **No false failures.** Tests share no state, so a red run means a real problem, not two tests colliding.
+- **No false passes.** Tests assert outcomes ("the balance is 900"), not "the page loaded", and lint rules block
+  missing `await`s and fixed waits.
+- **Testing that finds bugs.** Negative, boundary and concurrency tests at the API found money being created and
+  lost, and a wrong password being accepted.
+- **Honest about what is a bug.** The app has no specification, so a finding is a **bug** only when the app
+  contradicts itself or basic correctness; when the expectation comes from a standard or common practice, it is an
+  **observation**.
+- **Lean on purpose.** A test is added when it can find a defect or protects a critical flow
+  ([what is not tested, and why](#not-tested-on-purpose)).
 
 ## At a glance
 
@@ -91,8 +87,7 @@ cd frontend && npx vite preview --port 3000 --strictPort  # UI on http://localho
 ```
 
 This serves a production build, the same way CI does. The dev server (`npm run dev`) also works for a quick look,
-but it serves hundreds of separate modules to each browser, and under the full parallel suite Windows can run out of
-socket buffers (`net::ERR_NO_BUFFER_SPACE`), leaving a test with a blank page.
+but under the full parallel suite Windows can run out of socket buffers (`net::ERR_NO_BUFFER_SPACE`).
 
 ### 2. Install and run the tests
 
@@ -113,25 +108,19 @@ npx playwright install --with-deps
 | `npm run report`          | Opens the last HTML report                                      |
 | `npm run check`           | Type-check, lint and format check, the same gate CI starts with |
 
-No users need to exist beforehand. Each test creates the users and accounts it needs.
+No users need to exist beforehand: each test creates the users and accounts it needs, with throwaway data.
 
-### Configuration
-
-All settings have local defaults, so nothing needs to be set to run the suite against the app on `localhost`.
-
-| Variable               | Default                 | Purpose                                                                              |
-| ---------------------- | ----------------------- | ------------------------------------------------------------------------------------ |
-| `PLAYWRIGHT_BASE_URL`  | `http://localhost:3000` | Frontend under test                                                                  |
-| `API_BASE_URL`         | `http://localhost:6007` | Backend API under test                                                               |
-| `PLAYWRIGHT_TEST_SEED` | random per run          | Reproduces the random transfer amounts of a run; recorded in each test's annotations |
-| `CI`                   | unset                   | Set by CI: enables `forbidOnly`, one retry and the CI reporters                      |
-
-The suite needs no credentials or secrets: test users are created on the fly with throwaway data.
+| Variable               | Default                 | Purpose                                                                     |
+| ---------------------- | ----------------------- | --------------------------------------------------------------------------- |
+| `PLAYWRIGHT_BASE_URL`  | `http://localhost:3000` | Frontend under test                                                         |
+| `API_BASE_URL`         | `http://localhost:6007` | Backend API under test                                                      |
+| `PLAYWRIGHT_TEST_SEED` | random per run          | Replays the random transfer amounts of a run (recorded in each test's info) |
+| `CI`                   | unset                   | Set by CI: enables `forbidOnly`, one retry and the CI reporters             |
 
 ## Architecture
 
-Tests only talk to fixtures. Fixtures build page objects, create data through the API client and authenticate
-browsers, so no test repeats setup code or knows how the app stores its session.
+Tests only talk to fixtures. Fixtures build page objects, create data through the API client and log browsers in,
+so no test repeats setup code or knows how the app stores its session.
 
 ```mermaid
 flowchart LR
@@ -151,48 +140,31 @@ flowchart LR
   FE --> BE
 ```
 
-## Project structure
-
 ```
 .
-├── docs/defects/                # Annotated screenshots attached to the defect reports
-├── fixtures/index.ts            # Custom test fixtures: page objects, API client, createUser, loginAs, ...
+├── fixtures/index.ts            # createUser, loginAs, page objects and the API client, one line per test
 ├── pages/                       # Page objects: locators and user actions, no business assertions
-├── reporters/known-defects.ts   # Lists open known defects and fails a run when one fails for the wrong reason
 ├── tests/
 │   ├── api/                     # "api" project: contract and negative tests against the backend
-│   └── ui/                      # chromium / firefox / webkit projects: end-to-end flows and accessibility
+│   └── ui/                      # chromium / firefox / webkit: end-to-end flows and accessibility
 ├── types/api.ts                 # Typed request/response models
 ├── utils/
-│   ├── accessibility.ts         # axe-core scan and on-screen contrast measurement
 │   ├── athenaApi.ts             # Thin API client returning raw responses
-│   ├── knownBug.ts              # knownBug(): issue, summary and expected failure of a known-bug test
+│   ├── accessibility.ts         # axe-core scan, run after animations settle
+│   ├── knownIssue.ts            # knownIssue(): marks a test that documents an open bug or observation
 │   ├── userFactory.ts           # Unique test users
 │   ├── testRandom.ts            # Seeded random numbers
 │   └── urls.ts                  # Frontend/API base URLs from the environment
-├── scripts/
-│   ├── ci-summary.mjs           # Writes the GitHub Actions job summary
-│   └── build-report-index.mjs   # Builds the GitHub Pages report archive
-├── docs/images/                 # Screenshots used in this README
+├── reporters/known-issues.ts    # Lists open bugs and observations, apart from real passes
+├── scripts/                     # CI job summary and the GitHub Pages report archive
+├── docs/                        # Test case catalogue, issue screenshots, README images
 └── .github/                     # CI workflow, Dependabot, PR template, CODEOWNERS
 ```
 
-### Tooling built for this project
-
-| Tool                                                               | What it does                                                                                                       |
-| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| [`fixtures/index.ts`](fixtures/index.ts)                           | `createUser`, `loginAs`, `openDashboardInNewContext` and `randomAmount`: setup in one line per test                |
-| [`utils/athenaApi.ts`](utils/athenaApi.ts)                         | Typed client for the backend, returning raw responses so tests can assert on errors                                |
-| [`utils/testRandom.ts`](utils/testRandom.ts)                       | Seeded random numbers, so a "random" failure can be replayed exactly                                               |
-| [`utils/accessibility.ts`](utils/accessibility.ts)                 | Runs axe-core after animations settle, and measures text contrast against the pixels actually rendered behind it   |
-| [`reporters/known-defects.ts`](reporters/known-defects.ts)         | Lists known defects still present by issue, and fails the run when a known-bug test fails for an undeclared reason |
-| [`scripts/ci-summary.mjs`](scripts/ci-summary.mjs)                 | Turns the JSON report into the GitHub Actions job summary (passed, known defects, failed, flaky)                   |
-| [`scripts/build-report-index.mjs`](scripts/build-report-index.mjs) | Builds the GitHub Pages report archive and prunes old reports                                                      |
-
 ## What a test looks like
 
-An end-to-end test reads as the business scenario. Users, accounts and sessions come from fixtures, and each
-step asserts a visible outcome for both sides of the transfer:
+An end-to-end test reads as the business scenario. Users, accounts and sessions come from fixtures, and each step
+asserts a visible outcome for both sides of the transfer:
 
 ```ts
 test(
@@ -220,7 +192,7 @@ test(
 );
 ```
 
-API tests check the contract and that nothing moves when a request is rejected:
+API tests check the response and that nothing moves when a request is rejected:
 
 ```ts
 test(
@@ -243,122 +215,127 @@ test(
 );
 ```
 
-The full versions are in [`tests/ui/transactions.spec.ts`](tests/ui/transactions.spec.ts) and
-[`tests/api/transfers.api.spec.ts`](tests/api/transfers.api.spec.ts).
-
 ## Design decisions
 
-**Test data is created through the API, per test.** The `createUser` fixture signs a user up and opens a funded
-account through the backend in a few milliseconds. Nothing is shared between tests, browsers or workers, so the
-suite runs fully parallel, any test can run alone, and balance assertions cannot race.
+**Test data is created through the API, per test.** `createUser` signs a user up and opens a funded account in a
+few milliseconds. Nothing is shared between tests or browsers, so the suite runs fully parallel and any test can
+run alone.
 
-**Authentication skips the login form.** Only the login tests use the form. Everything else uses `loginAs(user)`,
-which injects the user's JWT before the app boots (the app keeps it in `localStorage`). This is faster and keeps
-login bugs from failing unrelated tests.
+**Logging in skips the form.** Only the login tests use the login form. Everything else uses `loginAs(user)`,
+which puts the user's token in the browser before the app starts. This is faster, and a login bug cannot fail
+unrelated tests.
 
 **API and UI are separate projects.** API tests don't start a browser. UI tests check what only the UI can show
 (navigation, validation messages, what each user sees) and use the API for setup.
 
-**Web-first assertions only.** No `networkidle` and no fixed waits; both are blocked by lint rules.
-`DashboardPage.goto()` waits for the dashboard's own data requests and asserts they succeeded, because the app
-loads accounts and transactions only once, on mount.
+**Web-first assertions only.** No `networkidle` and no fixed waits; lint rules block both. `DashboardPage.goto()`
+waits for the dashboard's own data requests, because the app loads accounts and transactions only once.
 
-**Accessibility is audited in layers, because one tool is not enough.** axe-core scans each screen and dialog
-against WCAG 2.2 A and AA rules, after animations finish (a scan taken while a MUI dialog fades in reports false
-contrast failures). But this app draws an animated particle canvas behind everything, and axe cannot see canvas
-pixels: it lists almost every text as "needs review" and, for one link, measured it against the wrong background.
-So contrast has its own check, `measureTextContrast`. It screenshots an element with its text shown and with its
-text made transparent, and compares the text colour with what is really painted behind it, strip by strip, so a
-gradient that turns light under white text is caught. A control test (TC-046) proves readable text passes it.
-Keyboard access, page language and page titles are checked directly, since no automated rule covers them fully.
-Each known defect is asserted in `test.fail()` tests, one per checked text, notification or form, so each fails
-for its stated reason today and fails loudly on its own once that part of the defect is fixed.
+**Accessibility: automated where a tool can decide, by hand where it cannot.** axe-core scans every page and dialog
+against WCAG 2.2 A and AA after animations finish. Keyboard access, the page language, titles and autofill hints
+are checked directly. axe cannot judge text contrast over the app's animated background (it marks it "needs
+review"), so the low-contrast texts were confirmed by hand and reported with screenshots (#4, #8).
 
-**A known bug must fail for the right reason.** Playwright counts a `test.fail()` test that fails as passed, so
-a known-bug test broken by an unrelated selector or timeout would look fine, and the summary would hide how many
-defects are still open. Every known-bug test therefore declares its expected failure with `knownBug()`, for
-example the start of the text and "has a contrast ratio of", and the
-[known-defects reporter](reporters/known-defects.ts) fails the run when a test fails with any other error. It
-also lists the open defects by issue in the terminal and in the job summary, apart from real passes.
+**Known issues stay in the suite.** A test for an open bug asserts the correct behaviour and is marked
+`test.fail()`, so the run stays green while the bug exists and fails as soon as the bug is fixed, as a reminder to
+remove the marker. Playwright counts such a test as "passed", which would hide two things, so a small
+[reporter](reporters/known-issues.ts) lists the open bugs and observations in the terminal and the CI summary, and
+fails the run if a known-issue test fails with a different error than the one it declares (for example, a broken
+selector instead of the bug).
 
-**Retries are a signal, not a fix.** There are no retries locally and one on CI, so a flaky test is reported as
-"flaky" in the job summary instead of silently passing.
+**Retries are a signal, not a fix.** No retries locally and one on CI, so a flaky test is reported as "flaky"
+instead of silently passing.
 
-**Tooling.** `typescript-eslint` with type-aware rules (`no-floating-promises` catches a missing `await` on a
-Playwright call), `eslint-plugin-playwright`, and Prettier. TypeScript is pinned to 6.0 because
-`typescript-eslint` does not support TypeScript 7 yet.
+**Code quality is checked before any test runs.** TypeScript type-checking, ESLint (with
+[`eslint-plugin-playwright`](https://github.com/playwright-community/eslint-plugin-playwright) and type-aware rules
+that catch a missing `await`) and Prettier formatting run first, locally with `npm run check` and on CI.
 
 ## Test coverage
 
-| Area            | UI                                                                                                                                                                                                                                                                                    | API                                                                                                                                                                                                                                                                                                                                 |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Sign-up         | Form fields and enabled state, success, duplicate email, request/response contract, mocked 500 (TC-001 to TC-008, TC-010)                                                                                                                                                             | Success contract, duplicate email (409), each missing field (400), malformed email and 1-character password (TC-009, TC-020, TC-021, TC-061)                                                                                                                                                                                        |
-| Login & session | Valid login, wrong password, login response contract, route guard, logout, empty and malformed input blocked before any request, masked password, busy button while pending, 320px reflow, rejected stored token (TC-007, TC-011, TC-015 to TC-017, TC-052 to TC-055, TC-062, TC-083) | Valid login, wrong password and unknown email (same 401), missing password, 10,000-character and oversized input, passwords longer than 72 characters, non-string credentials, brute-force lockout, email letter case, token after logout (TC-022 to TC-025, TC-056 to TC-060, TC-076)                                              |
-| Accounts        | Open an account, create-form validation, total of several accounts, add funds, freeze and unfreeze (frozen account disabled in both forms), delete an empty account, closure label (TC-019, TC-077 to TC-082)                                                                         | Created account and balance, missing or invalid token, all four types, unknown or missing type, negative opening balance, deposits and their rules, amounts as text, fractions of a cent, other users' accounts, deleting an account with money, malformed ids, history contract and isolation (TC-026 to TC-028, TC-063 to TC-073) |
-| Transfers       | Recipient without an account, client-side balance check, API transfer seen by receiver, UI transfer seen by both users, HTML in user data shown as text (TC-012 to TC-014, TC-018, TC-084)                                                                                            | Exact debit/credit, insufficient funds with no money moved, zero/negative amounts, unknown recipient, recipient without an account, spending someone else's account, no token, self-transfer, frozen sender or receiver, amount as text, simultaneous transfers (TC-029 to TC-036, TC-074, TC-075, TC-085)                          |
-| Accessibility   | axe-core WCAG 2.2 AA scans of the three pages and the create-account and send-money dialogs, keyboard-only login, keyboard access to "Agregar cuenta", on-screen contrast of text and notifications, autofill purpose, page language and titles (TC-037 to TC-051)                    | (UI only)                                                                                                                                                                                                                                                                                                                           |
+| Area            | UI                                                                                                                      | API                                                                                                                                                |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sign-up         | Button enabling, success, duplicate email, request contract, server error shown                                         | Contract, duplicate email, missing fields, invalid data                                                                                            |
+| Login & session | Login, wrong password, form validation, masked password, busy button, route guard, logout, rejected token, 320px layout | Contract, wrong password and unknown email, missing or oversized input, long passwords, non-string input, lockout, email case, token after logout  |
+| Accounts        | Open an account, form validation, total balance, add funds, freeze and unfreeze, delete, history labels                 | All four types, invalid type, negative balance, deposits and their rules, amounts as text, cents, other users' accounts, malformed ids, history    |
+| Transfers       | Transfer seen by both users, recipient without an account, balance check in the form, user data shown as text (no XSS)  | Exact debit and credit, insufficient funds, invalid amounts, unknown recipient, other users' accounts, frozen accounts, self-transfer, concurrency |
+| Accessibility   | axe-core scans of three pages and two dialogs, keyboard-only login, keyboard access, page language and titles, autofill | (UI only)                                                                                                                                          |
 
-## Known app defects
+Each test case, with its ID, is described in the [test case catalogue](docs/test-cases.md).
 
-Each defect has a `@known-bug` test that asserts the correct behaviour and is marked `test.fail()`, and each is
-reported on the app's repository with steps to reproduce, expected and actual results, root cause and annotated
-screenshots. The screenshots are in [`docs/defects/`](docs/defects/).
+## Known issues
 
-| Defect                                                                                                                                                                                                                                                                                                                                              | Found by                                                                                                                                                                                                  | Report                                                                                                                                          |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **A transfer to your own account increases the balance.** `routes/transactions.js` loads the same account twice (as sender and recipient) and saves both copies, so sending 100 to yourself turns 1,000 into 1,100.                                                                                                                                 | TC-036 `@known-bug`. It asserts the correct behaviour and is marked `test.fail()`, so it reports "expected to fail" today and will fail loudly once the bug is fixed, as a reminder to remove the marker. | [redux-athena-bank#1](https://github.com/Zetyre/redux-athena-bank/issues/1) · [screenshots](docs/defects/01-self-transfer-after.png)            |
-| **Concurrent transfers all succeed, but only one updates the balances.** Five simultaneous transfers of 1,000 from a 1,000 balance all return `200` and all create transaction records (5,000 in the history), while the balances move only 1,000. The balance check and the update are not atomic.                                                 | TC-085 (5 parallel transfers; reproduced 40 of 40 times)                                                                                                                                                  | [redux-athena-bank#2](https://github.com/Zetyre/redux-athena-bank/issues/2) · [screenshots](docs/defects/02-concurrent-sender.png)              |
-| **The sign-up page's "¿Ya tienes cuenta? Iniciar sesión" prompt is invisible.** It sits outside the form card, beneath the fixed particle canvas, so it is never painted; the link still takes focus and clicks, unseen. It also makes the page 30px wider than a 320px screen. WCAG 1.4.3, 2.4.7, 1.4.10.                                          | TC-043. axe flagged the link with a 4.09:1 ratio against white, which is the wrong background; checking the rendered pixels showed the text is not drawn at all.                                          | [redux-athena-bank#3](https://github.com/Zetyre/redux-athena-bank/issues/3) · [screenshots](docs/defects/03-signup-prompt-missing.png)          |
-| **Several texts fail contrast.** White text over the cyan end of the blue-to-cyan buttons (about 2.4:1 on login and sign-up, 1.7:1 on "Agregar fondos"), the focused field label in MUI default blue (3.7:1), the account card's type and balance on teal (1.7:1 and 3.5:1), and green and red transaction rows (3.5:1). WCAG 1.4.3 requires 4.5:1. | TC-044 and TC-045, measured on screen in all three browsers.                                                                                                                                              | [redux-athena-bank#4](https://github.com/Zetyre/redux-athena-bank/issues/4) · [screenshots](docs/defects/04-contrast-dashboard.png)             |
-| **"Agregar cuenta" cannot be used with a keyboard.** The tile is a `<div>` with a click handler and no `tabindex` or role, so Tab skips it and screen readers do not announce it as a control. WCAG 2.1.1, 4.1.2.                                                                                                                                   | TC-047                                                                                                                                                                                                    | [redux-athena-bank#5](https://github.com/Zetyre/redux-athena-bank/issues/5) · [screenshots](docs/defects/05-keyboard-tab-order.png)             |
-| **The page language is English, but the interface is Spanish.** `index.html` keeps `<html lang="en">`, so screen readers use English pronunciation. WCAG 3.1.1.                                                                                                                                                                                     | TC-048                                                                                                                                                                                                    | [redux-athena-bank#6](https://github.com/Zetyre/redux-athena-bank/issues/6) · [screenshots](docs/defects/06-07-titles-and-lang.png)             |
-| **Every page is titled "Vite + React + TS".** The Vite template title was never replaced, so tabs, history and screen readers cannot tell pages apart. WCAG 2.4.2.                                                                                                                                                                                  | TC-049                                                                                                                                                                                                    | [redux-athena-bank#7](https://github.com/Zetyre/redux-athena-bank/issues/7) · [screenshots](docs/defects/06-07-titles-and-lang.png)             |
-| **Success and info notifications fail contrast.** Toasts keep the notistack default colours: white on green `#43a047` (3.3:1) after creating an account or sending money, and white on blue `#2196f3` (3.1:1) after freezing an account. WCAG 1.4.3 requires 4.5:1.                                                                                 | TC-050, measured on screen in all three browsers; axe-core reports the same ratios.                                                                                                                       | [redux-athena-bank#8](https://github.com/Zetyre/redux-athena-bank/issues/8) · [screenshots](docs/defects/08-toast-success.png)                  |
-| **Login and sign-up fields do not identify their purpose.** No input sets `autocomplete`, and the sign-up form sets `autocomplete="off"`, so browsers cannot offer to fill in the user's own name, email or password. WCAG 1.3.5.                                                                                                                   | TC-051                                                                                                                                                                                                    | [redux-athena-bank#9](https://github.com/Zetyre/redux-athena-bank/issues/9) · [screenshots](docs/defects/09-autocomplete-signup.png)            |
-| **A wrong password is accepted if its first 72 characters match.** bcrypt only hashes the first 72 bytes and the backend sets no length limit, so everything after character 72 is ignored.                                                                                                                                                         | TC-057, also through the login form                                                                                                                                                                       | [redux-athena-bank#10](https://github.com/Zetyre/redux-athena-bank/issues/10) · [screenshots](docs/defects/10-password-72-logged-in.png)        |
-| **Login does not check that the credentials are strings.** An email sent as an array logs in (`$in` match); a password sent as a number or object returns `500 Server error` instead of `400`.                                                                                                                                                      | TC-058 (API only)                                                                                                                                                                                         | [redux-athena-bank#11](https://github.com/Zetyre/redux-athena-bank/issues/11) · [screenshots](docs/defects/11-non-string-credentials.png)       |
-| **No protection against brute force.** After 10 wrong passwords in a row, the correct one still logs in at once: no lockout, delay, rate limit or CAPTCHA. OWASP ASVS V2.2.1.                                                                                                                                                                       | TC-059, also through the login form                                                                                                                                                                       | [redux-athena-bank#12](https://github.com/Zetyre/redux-athena-bank/issues/12) · [screenshots](docs/defects/12-no-lockout-then-login.png)        |
-| **Email addresses are case-sensitive.** Signing up with the capitalised version of a registered email creates a second account, and logging in with it fails with "Invalid credentials".                                                                                                                                                            | TC-060, also through the sign-up and login forms                                                                                                                                                          | [redux-athena-bank#13](https://github.com/Zetyre/redux-athena-bank/issues/13) · [screenshots](docs/defects/13-email-case-duplicate-signup.png)  |
-| **Sign-up accepts a malformed email and a 1-character password.** The API only checks that fields are present, and the sign-up email field is plain text, so `not-an-email` / `1` creates an account.                                                                                                                                               | TC-061, also through the sign-up form                                                                                                                                                                     | [redux-athena-bank#14](https://github.com/Zetyre/redux-athena-bank/issues/14) · [screenshots](docs/defects/14-signup-invalid-data-created.png)  |
-| **An amount sent as text is appended to the balance.** `"100"` deposited into 1,000 gives 1,000,100, and a transfer of `"100"` takes 100 from the sender and turns the receiver's 1,000 into 1,000,100: `+=` concatenates.                                                                                                                          | TC-068, TC-074                                                                                                                                                                                            | [redux-athena-bank#15](https://github.com/Zetyre/redux-athena-bank/issues/15) · [screenshots](docs/defects/15-amount-as-text-receiver.png)      |
-| **An account can be opened with a negative balance.** The form blocks it; `POST /api/accounts` stores `initialAmount: -500` as given.                                                                                                                                                                                                               | TC-065                                                                                                                                                                                                    | [redux-athena-bank#16](https://github.com/Zetyre/redux-athena-bank/issues/16) · [screenshots](docs/defects/16-negative-opening-balance.png)     |
-| **Amounts are not kept to the cent.** Fractions of a cent are accepted (two deposits of 0.004 show as "+ 0.00" but move the balance a cent), and 0.1 + 0.2 is stored as 0.30000000000000004.                                                                                                                                                        | TC-069, also through the add-funds form                                                                                                                                                                   | [redux-athena-bank#17](https://github.com/Zetyre/redux-athena-bank/issues/17) · [screenshots](docs/defects/17-fraction-of-cent-deposits.png)    |
-| **Deleting an account destroys its money.** The dialog shows no balance or warning, and an account holding 750.00 is deleted with the money.                                                                                                                                                                                                        | TC-071, also through the dashboard                                                                                                                                                                        | [redux-athena-bank#18](https://github.com/Zetyre/redux-athena-bank/issues/18) · [screenshots](docs/defects/18-delete-with-balance-dialog.png)   |
-| **Every closed account is labelled "Cuenta de débito cerrada".** The history text is hard-coded and ignores the account type.                                                                                                                                                                                                                       | TC-080                                                                                                                                                                                                    | [redux-athena-bank#19](https://github.com/Zetyre/redux-athena-bank/issues/19) · [screenshots](docs/defects/18-19-delete-with-balance-after.png) |
-| **A rejected session leaves the user on an empty dashboard.** With an expired or invalid token the page shows $0.00 and two error toasts instead of going to the login page.                                                                                                                                                                        | TC-083                                                                                                                                                                                                    | [redux-athena-bank#20](https://github.com/Zetyre/redux-athena-bank/issues/20) · [screenshots](docs/defects/20-rejected-token-dashboard.png)     |
-| **Logout does not end the session.** The JWT keeps working for its full 7 days after "Cerrar sesión". OWASP ASVS V3.3.1.                                                                                                                                                                                                                            | TC-076 (API)                                                                                                                                                                                              | [redux-athena-bank#21](https://github.com/Zetyre/redux-athena-bank/issues/21) · [screenshots](docs/defects/21-token-after-logout.png)           |
-| **Malformed account ids return 500 with internal errors.** Transfer and delete answer `500` with the Mongoose `CastError` message.                                                                                                                                                                                                                  | TC-072 (API)                                                                                                                                                                                              | [redux-athena-bank#22](https://github.com/Zetyre/redux-athena-bank/issues/22) · [screenshots](docs/defects/22-malformed-id.png)                 |
+The app has no specification, so findings are classified by where the expected behaviour comes from:
+
+- **Bug:** the app contradicts itself (its own form, message or code says otherwise) or basic correctness (money
+  created or lost, a server error on normal input, data shown wrongly).
+- **Observation:** the expectation comes only from a standard or common practice (WCAG, OWASP ASVS, banking
+  practice). A design gap rather than a contradiction.
+
+Each one has a `test.fail()` test unless noted, tagged `@bug` or `@observation`
+(`npx playwright test --grep @observation`). Bugs are reported as issues on the app's repository with steps to
+reproduce, expected and actual results, root cause and annotated screenshots. Observations are listed here; the
+first four were reported as issues before this classification existed.
+
+### Bugs
+
+| #                                                           | Bug                                                                                                         | Why it is a bug                                                        | Test            | Screenshots                                                 |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | --------------- | ----------------------------------------------------------- |
+| [1](https://github.com/Zetyre/redux-athena-bank/issues/1)   | A transfer to your own account increases the balance: 1,000 becomes 1,100.                                  | A transfer never changes the total amount of money.                    | TC-036          | [view](docs/defects/01-self-transfer-after.png)             |
+| [2](https://github.com/Zetyre/redux-athena-bank/issues/2)   | Five simultaneous transfers of the whole balance all succeed; only one updates the balances.                | The app's own "Insufficient funds" check must hold for every transfer. | TC-085          | [view](docs/defects/02-concurrent-sender.png)               |
+| [3](https://github.com/Zetyre/redux-athena-bank/issues/3)   | The sign-up page's "¿Ya tienes cuenta? Iniciar sesión" line is never drawn, and widens the page past 320px. | It is in the page to be seen, like its counterpart on the login page.  | TC-043 (layout) | [view](docs/defects/03-signup-prompt-missing.png)           |
+| [6](https://github.com/Zetyre/redux-athena-bank/issues/6)   | The page declares English (`lang="en"`) but the interface is Spanish.                                       | A leftover of the project template.                                    | TC-048          | [view](docs/defects/06-07-titles-and-lang.png)              |
+| [7](https://github.com/Zetyre/redux-athena-bank/issues/7)   | Every page is titled "Vite + React + TS".                                                                   | A leftover of the project template.                                    | TC-049          | [view](docs/defects/06-07-titles-and-lang.png)              |
+| [10](https://github.com/Zetyre/redux-athena-bank/issues/10) | A wrong password logs in if its first 72 characters match the real one.                                     | A wrong password must be rejected.                                     | TC-057          | [view](docs/defects/10-password-72-logged-in.png)           |
+| [11](https://github.com/Zetyre/redux-athena-bank/issues/11) | Login with an array as email logs in; a number or object as password returns `500`.                         | Client input must never cause a server error.                          | TC-058          | [view](docs/defects/11-non-string-credentials.png)          |
+| [12](https://github.com/Zetyre/redux-athena-bank/issues/12) | An amount sent as text is appended: `"100"` turns a balance of 1,000 into 1,000,100.                        | It creates money.                                                      | TC-068, TC-074  | [view](docs/defects/12-amount-as-text-receiver.png)         |
+| [13](https://github.com/Zetyre/redux-athena-bank/issues/13) | The API opens an account with a negative balance.                                                           | The app's own form rejects negative amounts.                           | TC-065          | [view](docs/defects/13-negative-opening-balance.png)        |
+| [14](https://github.com/Zetyre/redux-athena-bank/issues/14) | Fractions of a cent are accepted and balances drift (0.1 + 0.2 = 0.30000000000000004).                      | The history shows "+ 0.00" while the balance moves.                    | TC-069          | [view](docs/defects/14-fraction-of-cent-deposits.png)       |
+| [15](https://github.com/Zetyre/redux-athena-bank/issues/15) | Every closed account is shown as "Cuenta de débito cerrada", whatever its type.                             | The backend records the right type; the dashboard contradicts it.      | TC-080          | [view](docs/defects/obs-4-15-delete-with-balance-after.png) |
+| [16](https://github.com/Zetyre/redux-athena-bank/issues/16) | An expired or rejected session leaves the user on an empty $0.00 dashboard.                                 | With no session at all, the app sends the user to login.               | TC-083          | [view](docs/defects/16-rejected-token-dashboard.png)        |
+| [17](https://github.com/Zetyre/redux-athena-bank/issues/17) | A malformed account id returns `500` with the internal database error.                                      | Client input must never cause a server error.                          | TC-072          | [view](docs/defects/17-malformed-id.png)                    |
+
+### Observations
+
+| #                                                         | Observation                                                                                           | Based on                         | Test   | Screenshots                                                |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------- | ------ | ---------------------------------------------------------- |
+| [4](https://github.com/Zetyre/redux-athena-bank/issues/4) | Several texts are below the contrast minimum: gradient buttons, a focused label, card texts, history. | WCAG 1.4.3                       | Manual | [view](docs/defects/04-contrast-dashboard.png)             |
+| [5](https://github.com/Zetyre/redux-athena-bank/issues/5) | "Agregar cuenta" cannot be reached or used with a keyboard.                                           | WCAG 2.1.1, 4.1.2                | TC-047 | [view](docs/defects/05-keyboard-tab-order.png)             |
+| [8](https://github.com/Zetyre/redux-athena-bank/issues/8) | Success and info notifications are below the contrast minimum.                                        | WCAG 1.4.3                       | Manual | [view](docs/defects/08-toast-success.png)                  |
+| [9](https://github.com/Zetyre/redux-athena-bank/issues/9) | Login and sign-up fields do not declare their purpose for autofill.                                   | WCAG 1.3.5                       | TC-051 | [view](docs/defects/09-autocomplete-signup.png)            |
+| OBS-1                                                     | No protection against brute force: after 10 wrong passwords, the right one still logs in at once.     | OWASP ASVS V2.2.1                | TC-059 | [view](docs/defects/obs-1-no-lockout-then-login.png)       |
+| OBS-2                                                     | Emails are case-sensitive: a capitalised copy of an email creates a second account.                   | Common practice                  | TC-060 | [view](docs/defects/obs-2-email-case-duplicate-signup.png) |
+| OBS-3                                                     | Sign-up accepts `not-an-email` as an email and `1` as a password.                                     | Common practice, NIST SP 800-63B | TC-061 | [view](docs/defects/obs-3-signup-invalid-data-created.png) |
+| OBS-4                                                     | An account holding money can be deleted with no warning, and the money is gone.                       | Banking practice                 | TC-071 | [view](docs/defects/obs-4-delete-with-balance-dialog.png)  |
+| OBS-5                                                     | Logging out does not invalidate the token; it keeps working for 7 days.                               | OWASP ASVS V3.3.1                | TC-076 | [view](docs/defects/obs-5-token-after-logout.png)          |
 
 ## Not tested on purpose
 
-The suite stays lean: a test is added when it can find a defect or protects a critical flow. These were
-considered and left out:
-
-| Not covered                                          | Why                                                                                                                                                                                                                               |
-| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Visual regression (`toHaveScreenshot`)               | The background is an animated particle canvas, so baselines would need masking and still churn with every style tweak, for little defect-finding value. Layout problems are caught by the reflow, contrast and visibility checks. |
-| Performance and load                                 | A demo app on a local or CI database gives timings that say nothing about production. The concurrency test (TC-085, redux-athena-bank#2) covers the one load-related risk found: lost updates.                                    |
-| Every input combination of every form                | Each validation rule is tested once at the layer that enforces it; the UI tests keep to the flows a user takes.                                                                                                                   |
-| Rare collisions of the random 4-digit account number | The dashboard identifies accounts by their last 4 digits; two accounts of one user rarely share them, and forcing it would mean mocking the backend. Noted as a risk, not tested.                                                 |
-| Transfers go to the recipient's first account        | A product decision rather than a defect: the API has no way to choose the recipient account.                                                                                                                                      |
+| Not covered                                          | Why                                                                                                                                     |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Visual regression (`toHaveScreenshot`)               | The animated particle background would make screenshot baselines churn on every run, for little bug-finding value in a demo app.        |
+| Automated contrast checks                            | axe cannot measure text over the animated background, and a custom pixel check is more machinery than a demo app justifies.             |
+| Mobile devices                                       | The app has no mobile-specific behaviour; the 320px layout checks cover narrow screens.                                                 |
+| Performance and load                                 | Timings from a demo app on a test database say nothing about production. The concurrency test (TC-085) covers the one load-related bug. |
+| Every input combination of every form                | Each validation rule is tested once, at the layer that enforces it.                                                                     |
+| Transfers always go to the recipient's first account | A product decision: the API has no way to choose the recipient account.                                                                 |
 
 ## CI pipeline
 
 [`.github/workflows/playwright.yml`](.github/workflows/playwright.yml)
 
-| Trigger                | What runs                                                                              |
-| ---------------------- | -------------------------------------------------------------------------------------- |
-| Pull request to `main` | Full suite on `api` and `chromium`, `@smoke` on `firefox`, `webkit` and the two phones |
-| Push to `main`         | Full suite on every project, then publishes the report                                 |
-| Nightly (03:00 UTC)    | Full suite on every project, then publishes the report                                 |
-| Manual                 | Full suite or `@smoke`, chosen when starting the run                                   |
+| Trigger                | What runs                                                           |
+| ---------------------- | ------------------------------------------------------------------- |
+| Pull request to `main` | Full suite on `api` and `chromium`, `@smoke` on `firefox`, `webkit` |
+| Push to `main`         | Full suite on every project, then publishes the report              |
+| Nightly (03:00 UTC)    | Full suite on every project, then publishes the report              |
+| Manual                 | Full suite or `@smoke`, chosen when starting the run                |
 
 ```mermaid
 flowchart LR
   Q["Quality gate<br/>tsc · eslint · prettier · npm audit"] --> M
   subgraph M["Test matrix (parallel)"]
     direction TB
-    A[api] ~~~ CH[chromium] ~~~ FF[firefox] ~~~ WK[webkit] ~~~ MC[mobile-chrome] ~~~ MS[mobile-safari]
+    A[api] ~~~ CH[chromium] ~~~ FF[firefox] ~~~ WK[webkit]
   end
   M --> R["Merge reports<br/>HTML + job summary"]
   M --> G{{"test<br/>required check"}}
@@ -366,36 +343,29 @@ flowchart LR
 ```
 
 1. **Quality gate:** type-check, lint, format check and `npm audit` run before any browser starts.
-2. **Test matrix:** one job per project, in parallel, inside the official Playwright image. `mobile-chrome`
-   (Pixel 7) and `mobile-safari` (iPhone 14) emulate phones and always run the `@smoke` suite. The image tag is read
-   from the lockfile, so a Dependabot bump of `@playwright/test` cannot leave the browsers out of sync. Each job
-   starts MongoDB, the backend and a **production build** of the frontend (`vite preview`), with the app pinned
-   to a specific commit.
-3. **Report:** blob reports from all jobs are merged into one HTML report. A job summary lists passed tests, known
-   defects still present (by issue), failed and flaky tests. The full report, with traces and screenshots, is kept as a workflow artifact for 7 days.
-4. **Gate:** a single `test` job is the required status check for `main`. It fails unless the quality gate and
-   every matrix job succeeded, so branch protection never needs editing when the matrix changes.
-5. **Publish:** on `main`, every run's report (passed or failed) goes to the
-   [GitHub Pages archive](https://zetyre.github.io/athena-bank-playwright-tests/) with its status and a link to the
-   run. The last 30 are kept.
+2. **Test matrix:** one job per project, in parallel, inside the official Playwright Docker image. Each job starts
+   MongoDB, the backend and a production build of the frontend, with the app pinned to a specific commit.
+3. **Report:** the jobs' reports are merged into one HTML report, and the job summary lists passed tests, open bugs
+   and observations, failed and flaky tests. The full report, with traces, is kept for 7 days.
+4. **Gate:** a single `test` job is the required status check for `main`, so branch protection never needs editing
+   when the matrix changes.
+5. **Publish:** on `main`, every run's report goes to the
+   [GitHub Pages archive](https://zetyre.github.io/athena-bank-playwright-tests/). The last 30 are kept.
 
-**Security.** Actions are pinned to commit SHAs, `GITHUB_TOKEN` is read-only except in the publish job, and
-checkouts don't keep credentials. Test users exist only in an ephemeral CI database. Even so, the public Pages
-copy strips traces and screenshots; they stay in the short-lived artifact.
+**Security.** Actions are pinned to commit SHAs, `GITHUB_TOKEN` is read-only except in the publish job, and the
+public report copy leaves out traces and screenshots.
 
-### Reading a failure
-
-1. Open the run's **Summary** to see which tests failed or were flaky.
-2. Download the `playwright-report` artifact, unzip it and run `npx playwright show-report <folder>`.
-3. Open the failed test and its **Trace** to step through actions, network calls and DOM snapshots.
+**Reading a failure:** open the run's **Summary**, download the `playwright-report` artifact, run
+`npx playwright show-report <folder>`, and open the failed test's **Trace** to step through actions, network calls
+and the page at each step.
 
 ## Known limitations
 
-- The app hardcodes `http://localhost:6007` for login and sign-up (`Login.tsx`, `SignUp.tsx`) and only allows CORS
-  from port 3000, so the UI suite can only target an app served from `localhost:3000`. The API suite can target
-  any environment through `API_BASE_URL`.
-- Locally, workers are capped at 30% of CPU cores. Above about six concurrent Firefox instances, Firefox's
-  software compositor crashes on Windows. CI is not affected, since it runs one browser per job.
+- The app hardcodes `http://localhost:6007` for login and sign-up and only allows CORS from port 3000, so the UI
+  suite can only target an app served from `localhost:3000`. The API suite can target any environment through
+  `API_BASE_URL`.
+- Locally, workers are capped at 30% of CPU cores: above about six concurrent Firefox instances, Firefox crashes on
+  Windows. CI runs one browser per job and is not affected.
 
 ## Tech stack
 

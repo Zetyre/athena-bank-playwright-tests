@@ -1,6 +1,6 @@
 import { expect, test } from '../../fixtures';
 import type { Account } from '../../types/api';
-import { knownBug } from '../../utils/knownBug';
+import { knownIssue } from '../../utils/knownIssue';
 import { apiUrl } from '../../utils/urls';
 
 test.describe('Account management', () => {
@@ -88,11 +88,13 @@ test.describe('Account management', () => {
 
   test(
     'TC-080: The closure of a savings account is labelled as a savings account in the history',
-    knownBug({
-      issue: 'Zetyre/redux-athena-bank#19',
+    knownIssue({
+      kind: 'bug',
+      issue: 'Zetyre/redux-athena-bank#15',
       summary:
         'App defect: Dashboard.tsx renders every account_closed event as "Cuenta de débito cerrada", ignoring ' +
         'the account type the backend recorded.',
+      basis: 'the backend records the account type ("Cuenta de ahorros cerrada"), and the dashboard contradicts it.',
       fails:
         /Expected(?: string)?: "Cuenta de ahorros cerrada \d{4}"\s+Received(?: string)?: "Cuenta de débito cerrada \d{4}"/,
     }),

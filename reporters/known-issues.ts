@@ -1,25 +1,33 @@
 import { writeFileSync } from 'node:fs';
 import type { FullResult, Reporter, TestCase, TestResult } from '@playwright/test/reporter';
-import { EXPECTED_FAILURE_ANNOTATION, ISSUE_ANNOTATION, KNOWN_BUG_TAG } from '../utils/knownBug';
+import {
+  EXPECTED_FAILURE_ANNOTATION,
+  ISSUE_ANNOTATION,
+  ISSUE_KIND_ANNOTATION,
+  type IssueKind,
+  KNOWN_ISSUE_TAG,
+} from '../utils/knownIssue';
 
 /**
- * Reports `@known-bug` tests apart from real passes, and checks that each one fails for its declared reason.
+ * Reports `@known-issue` tests (known bugs and observations) apart from real passes, and checks that each one fails
+ * for its declared reason.
  *
- * Playwright counts a `test.fail()` test that fails as passed, so "157 passed" hides how many known defects are
- * still open, and a known-bug test that breaks for an unrelated reason (a selector, a timeout) still looks fine.
+ * Playwright counts a `test.fail()` test that fails as passed, so "244 passed" hides how many known issues are still
+ * open, and a known-issue test that breaks for an unrelated reason (a selector, a timeout) still looks fine.
  * This reporter:
- * - lists the defects still present, grouped by issue;
- * - fails the run when a known-bug test fails with an error that does not match its `expected-failure` pattern,
+ * - lists the bugs and the observations still present, grouped by issue;
+ * - fails the run when a known-issue test fails with an error that does not match its `expected-failure` pattern,
  *   or when the test is misconfigured (no `test.fail()`, no pattern);
- * - lists known-bug tests that now pass (Playwright already fails the run for those: remove `test.fail()`).
+ * - lists known-issue tests that now pass (Playwright already fails the run for those: remove `test.fail()`).
  *
- * Set KNOWN_DEFECTS_MARKDOWN to a file path to also write the list as Markdown (CI adds it to the job summary).
+ * Set KNOWN_ISSUES_MARKDOWN to a file path to also write the lists as Markdown (CI adds it to the job summary).
  */
 
 type Outcome = 'present' | 'wrong-reason' | 'fixed' | 'misconfigured';
 
 type Entry = {
   issue: string;
+  kind: IssueKind;
   title: string;
   project: string;
   outcome: Outcome;
@@ -29,6 +37,11 @@ type Entry = {
   expected?: string;
   got?: string;
 };
+
+const KINDS: { kind: IssueKind; heading: string; noun: string }[] = [
+  { kind: 'bug', heading: 'Known bugs still present', noun: 'bug' },
+  { kind: 'observation', heading: 'Observations still open', noun: 'observation' },
+];
 
 // eslint-disable-next-line no-control-regex
 const ANSI_ESCAPE = /\u001b\[[0-9;]*m/g;
@@ -49,7 +62,7 @@ const summarize = (text: string) =>
 
 const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`;
 
-export default class KnownDefectsReporter implements Reporter {
+export default class KnownIssuesReporter implements Reporter {
   // Keyed by test id, so only the last attempt of a retried test counts.
   private readonly latest = new Map<string, { test: TestCase; result: TestResult }>();
 
@@ -58,7 +71,7 @@ export default class KnownDefectsReporter implements Reporter {
   }
 
   onTestEnd(test: TestCase, result: TestResult): void {
-    if (test.tags.includes(KNOWN_BUG_TAG)) this.latest.set(test.id, { test, result });
+    if (test.tags.includes(KNOWN_ISSUE_TAG)) this.latest.set(test.id, { test, result });
   }
 
   // Returning a status overrides the run's result, which is how a wrong-reason failure fails the run.
@@ -73,7 +86,7 @@ export default class KnownDefectsReporter implements Reporter {
     const fixed = by('fixed');
 
     console.log(renderText(present, problems, fixed));
-    const markdownFile = process.env.KNOWN_DEFECTS_MARKDOWN;
+    const markdownFile = process.env.KNOWN_ISSUES_MARKDOWN;
     if (markdownFile) writeFileSync(markdownFile, renderMarkdown(present, problems, fixed));
     return problems.length > 0 ? { status: 'failed' } : undefined;
   }
@@ -86,13 +99,14 @@ function isEntry(entry: Entry | undefined): entry is Entry {
 function classify(test: TestCase, result: TestResult): Entry | undefined {
   if (result.status === 'skipped' || result.status === 'interrupted') return undefined;
   const annotation = (type: string) => test.annotations.find(a => a.type === type)?.description;
-  const issue = /^([\w.-]+\/[\w.-]+#\d+)\./.exec(annotation(ISSUE_ANNOTATION) ?? '')?.[1] ?? '(no issue)';
-  const base = { issue, title: test.title, project: test.parent.project()?.name ?? '' };
+  const issue = /^([\w.-]+\/[\w.-]+#\d+|OBS-\d+)\./.exec(annotation(ISSUE_ANNOTATION) ?? '')?.[1] ?? '(no issue)';
+  const kind: IssueKind = annotation(ISSUE_KIND_ANNOTATION) === 'observation' ? 'observation' : 'bug';
+  const base = { issue, kind, title: test.title, project: test.parent.project()?.name ?? '' };
 
   if (test.expectedStatus !== 'failed') {
     // A setup error before test.fail() ran is already reported by Playwright as a failure.
     if (result.status !== 'passed') return undefined;
-    return { ...base, outcome: 'misconfigured', detail: `tagged ${KNOWN_BUG_TAG} but test.fail() is not called` };
+    return { ...base, outcome: 'misconfigured', detail: `tagged ${KNOWN_ISSUE_TAG} but test.fail() is not called` };
   }
   if (result.status === 'passed') return { ...base, outcome: 'fixed' };
 
@@ -127,18 +141,25 @@ function describeProblem(entry: Entry, code: (text: string) => string): string {
 }
 
 function renderText(present: Entry[], problems: Entry[], fixed: Entry[]): string {
-  const issues = group(present);
-  const lines = ['', `Known defects still present: ${count(issues.size, 'issue')}, ${count(present.length, 'check')}`];
-  for (const [issue, titles] of issues) {
-    lines.push(`  ${issue}`);
-    for (const [title, projects] of titles) lines.push(`    ${title} [${projects.join(', ')}]`);
+  const lines: string[] = [];
+  for (const { kind, heading } of KINDS) {
+    const ofKind = present.filter(entry => entry.kind === kind);
+    const issues = group(ofKind);
+    lines.push('', `${heading}: ${count(issues.size, 'issue')}, ${count(ofKind.length, 'check')}`);
+    for (const [issue, titles] of issues) {
+      lines.push(`  ${issue}`);
+      for (const [title, projects] of titles) lines.push(`    ${title} [${projects.join(', ')}]`);
+    }
   }
   if (fixed.length > 0) {
-    lines.push('', `Known-bug tests that now pass (remove test.fail() and the ${KNOWN_BUG_TAG} tag): ${fixed.length}`);
+    lines.push(
+      '',
+      `Known-issue tests that now pass (remove test.fail() and the knownIssue() details): ${fixed.length}`,
+    );
     for (const entry of fixed) lines.push(`  ✘ [${entry.project}] ${entry.title} (${entry.issue})`);
   }
   if (problems.length > 0) {
-    lines.push('', `Known-bug tests that did not fail for their declared reason: ${problems.length}`);
+    lines.push('', `Known-issue tests that did not fail for their declared reason: ${problems.length}`);
     for (const entry of problems) {
       lines.push(`  ✘ [${entry.project}] ${entry.title}`, `      ${describeProblem(entry, text => text)}`);
     }
@@ -146,6 +167,7 @@ function renderText(present: Entry[], problems: Entry[], fixed: Entry[]): string
   return lines.join('\n');
 }
 
+/** A GitHub issue becomes a link; an observation id (listed in the README) stays as text. */
 function issueLink(issue: string): string {
   const match = /^(.+)#(\d+)$/.exec(issue);
   return match ? `[${issue}](https://github.com/${match[1]}/issues/${match[2]})` : issue;
@@ -155,18 +177,22 @@ function issueLink(issue: string): string {
 const inlineCode = (text: string) => `\`${text.replace(/`/g, "'")}\``;
 
 function renderMarkdown(present: Entry[], problems: Entry[], fixed: Entry[]): string {
-  const issues = group(present);
   const lines = [
-    `## Known defects ${problems.length > 0 ? '❌' : '🐞'}`,
+    `## Known issues ${problems.length > 0 ? '❌' : '🐞'}`,
     '',
-    `${count(issues.size, 'reported defect')} still present in the app (${count(present.length, 'check')}). ` +
-      'Their tests are marked `test.fail()`, so they count as passed while each fails for its declared reason.',
-    '',
-    '| Issue | Check | Browsers |',
-    '| --- | --- | --- |',
+    'Their tests are marked `test.fail()`, so they count as passed while each fails for its declared reason. ' +
+      'Bugs contradict the app itself or basic correctness; observations follow a standard or common practice the ' +
+      'app has no specification for.',
   ];
-  for (const [issue, titles] of issues) {
-    for (const [title, projects] of titles) lines.push(`| ${issueLink(issue)} | ${title} | ${projects.join(', ')} |`);
+  for (const { kind, heading, noun } of KINDS) {
+    const ofKind = present.filter(entry => entry.kind === kind);
+    const issues = group(ofKind);
+    lines.push('', `### ${heading}`, '', `${count(issues.size, noun)}, ${count(ofKind.length, 'check')}.`);
+    if (issues.size === 0) continue;
+    lines.push('', '| Issue | Check | Browsers |', '| --- | --- | --- |');
+    for (const [issue, titles] of issues) {
+      for (const [title, projects] of titles) lines.push(`| ${issueLink(issue)} | ${title} | ${projects.join(', ')} |`);
+    }
   }
   if (fixed.length > 0) {
     lines.push('', '### Now passing: remove `test.fail()`', '');

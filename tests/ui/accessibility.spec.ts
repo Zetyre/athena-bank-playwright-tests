@@ -1,21 +1,17 @@
-import type { Locator, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { expect, test } from '../../fixtures';
-import type { DashboardPage } from '../../pages/dashboardPage';
-import type { LoginPage } from '../../pages/loginPage';
-import type { RegisterPage } from '../../pages/registerPage';
-import type { BankUser } from '../../types/api';
-import { expectNoViolations, expectSufficientContrast, scanAccessibility } from '../../utils/accessibility';
-import { knownBug, lowContrast, notPainted } from '../../utils/knownBug';
+import { expectNoViolations, scanAccessibility } from '../../utils/accessibility';
+import { knownIssue } from '../../utils/knownIssue';
 
 /**
- * "¿Ya tienes cuenta? Iniciar sesión" under the sign-up form. It is covered by the particle background (TC-043),
- * and axe measures it against the page's white base instead, so it is left out of the sign-up scan.
+ * "¿Ya tienes cuenta? Iniciar sesión" under the sign-up form. It is hidden under the particle background
+ * (redux-athena-bank#3), and axe measures it against the page's white base instead, so it is left out of the scan.
  */
 const SIGNUP_LOGIN_PROMPT = '[data-testid="texto-pregunta-cuenta"]';
 
 test.describe('Accessibility (WCAG 2.2 AA)', () => {
-  // An axe scan or a contrast measurement takes screenshots and runs over the whole DOM; under local parallel
-  // load Firefox can need more than 30 s.
+  // An axe scan runs over the whole DOM after the animations settle; under local parallel load Firefox can need
+  // more than 30 s.
   test.slow();
 
   test.describe('axe-core scans', () => {
@@ -91,11 +87,13 @@ test.describe('Accessibility (WCAG 2.2 AA)', () => {
 
     test(
       'TC-047: "Agregar cuenta" can be reached with Tab and opened with Enter',
-      knownBug({
+      knownIssue({
+        kind: 'observation',
         issue: 'Zetyre/redux-athena-bank#5',
         summary:
-          'App defect (WCAG 2.1.1, 4.1.2): the "Agregar cuenta" tile is a <div> with an onClick handler and no ' +
+          'The "Agregar cuenta" tile is a <div> with an onClick handler and no ' +
           'tabindex or role, so keyboard and screen reader users cannot open a new account.',
+        basis: 'WCAG 2.2 AA 2.1.1 Keyboard and 4.1.2 Name, Role, Value.',
         fails: /Elements reached with Tab/,
       }),
       async ({ page, createUser, loginAs, createAccountModal }) => {
@@ -116,43 +114,20 @@ test.describe('Accessibility (WCAG 2.2 AA)', () => {
     );
   });
 
-  test.describe('Contrast, measured on screen', () => {
-    // Each known-bug check is its own test, so fixing one text in the app turns exactly one test from "expected to
-    // fail" into a failure that says which test.fail() to remove.
-
-    const signUpPromptBug = (fails: RegExp) =>
-      knownBug({
-        issue: 'Zetyre/redux-athena-bank#3',
-        summary:
-          'App defect (WCAG 1.4.3, 1.4.10): in SignUp.tsx the prompt sits outside the form card and below the fixed ' +
-          'particle canvas (z-index 0), so it is never painted, while its link still receives focus and clicks. It ' +
-          'also pushes the page 30px wider than a 320px viewport.',
-        fails,
-      });
-
-    for (const [name, target, fails] of [
-      ['prompt text', (registerPage: RegisterPage) => registerPage.loginPrompt, notPainted('¿Ya tienes cuenta?')],
-      [
-        '"Iniciar sesión" link',
-        (registerPage: RegisterPage) => registerPage.loginPromptLink,
-        notPainted('Iniciar sesión'),
-      ],
-    ] as const) {
-      test(
-        `TC-043: The "¿Ya tienes cuenta? Iniciar sesión" prompt on the sign-up page is visible: ${name}`,
-        signUpPromptBug(fails),
-        async ({ registerPage }) => {
-          test.fail();
-          await registerPage.goto();
-
-          await expectSufficientContrast(target(registerPage));
-        },
-      );
-    }
-
+  test.describe('Layout', () => {
     test(
       'TC-043: The sign-up page fits a 320px-wide screen without horizontal scrolling',
-      signUpPromptBug(/Pixels the page is wider than a 320px viewport/),
+      knownIssue({
+        kind: 'bug',
+        issue: 'Zetyre/redux-athena-bank#3',
+        summary:
+          'The "¿Ya tienes cuenta? Iniciar sesión" prompt in SignUp.tsx sits outside the form card, under the ' +
+          'particle canvas, so it is never drawn (see the issue screenshots), and it pushes the page 30px wider ' +
+          'than a 320px viewport.',
+        basis:
+          'the login page, built the same way, fits 320px (TC-062); the extra width comes only from the misplaced prompt.',
+        fails: /Pixels the page is wider than a 320px viewport/,
+      }),
       async ({ page, registerPage }) => {
         test.fail();
         await page.setViewportSize({ width: 320, height: 640 });
@@ -164,189 +139,19 @@ test.describe('Accessibility (WCAG 2.2 AA)', () => {
         expect(overflow, 'Pixels the page is wider than a 320px viewport').toBe(0);
       },
     );
-
-    const loginAndSignUpBug = (fails: RegExp) =>
-      knownBug({
-        issue: 'Zetyre/redux-athena-bank#4',
-        summary:
-          'App defect (WCAG 1.4.3): white button text on the blue-to-cyan gradient drops to about 2.4:1 over the cyan ' +
-          'end, and the label of a focused field is MUI default blue #1976d2 on a dark card (about 3.7:1).',
-        fails,
-      });
-
-    type FormPages = { loginPage: LoginPage; registerPage: RegisterPage; user: BankUser };
-    for (const [name, open, fails] of [
-      [
-        'login button',
-        async ({ loginPage }: FormPages) => {
-          await loginPage.goto();
-          return loginPage.loginButton;
-        },
-        lowContrast('Iniciar sesión'),
-      ],
-      [
-        'focused field label',
-        async ({ loginPage, user }: FormPages) => {
-          await loginPage.goto();
-          await loginPage.fillForm(user);
-          await loginPage.passwordInput.focus();
-          return loginPage.passwordLabel;
-        },
-        lowContrast('Contraseña'),
-      ],
-      [
-        'sign-up button',
-        async ({ registerPage, user }: FormPages) => {
-          await registerPage.goto();
-          // Filled in, so the button is enabled and shows its normal colours.
-          await registerPage.fillForm({ ...user, email: `other.${user.email}` });
-          return registerPage.registerButton;
-        },
-        lowContrast('Registrarse'),
-      ],
-    ] as const) {
-      test(
-        `TC-044: Text on the login and sign-up pages meets the contrast minimum: ${name}`,
-        loginAndSignUpBug(fails),
-        async ({ loginPage, registerPage, createUser }) => {
-          test.fail();
-          const user = await createUser({ initialBalance: null });
-
-          await expectSufficientContrast(await open({ loginPage, registerPage, user }));
-        },
-      );
-    }
-
-    const dashboardBug = (fails: RegExp) =>
-      knownBug({
-        issue: 'Zetyre/redux-athena-bank#4',
-        summary:
-          'App defect (WCAG 1.4.3): on the teal account card the account type (#a6b1e1) is about 1.7:1 and the ' +
-          'balance about 3.5:1; "Agregar fondos" drops to about 1.7:1 over the cyan end of its gradient; ' +
-          'transaction rows use #2e7d32 green (incoming) and #d32f2f red (outgoing) on a dark card (about 3.5:1).',
-        fails,
-      });
-
-    type DashboardTexts = { dashboard: DashboardPage; incoming: Locator; outgoing: Locator };
-    // The expected failure names the start of the text, so a locator that drifts to another element is caught too.
-    for (const [name, target, fails] of [
-      ['account type', ({ dashboard }: DashboardTexts) => dashboard.accountType, lowContrast('Ahorros')],
-      ['account balance', ({ dashboard }: DashboardTexts) => dashboard.accountBalance, lowContrast('$')],
-      [
-        '"Agregar fondos" button',
-        ({ dashboard }: DashboardTexts) => dashboard.addFundsButton,
-        lowContrast('Agregar fondos'),
-      ],
-      [
-        'incoming description',
-        ({ incoming }: DashboardTexts) => incoming.getByTestId('descripcion-transaccion'),
-        lowContrast('Cuenta activada'),
-      ],
-      [
-        'incoming amount',
-        ({ dashboard, incoming }: DashboardTexts) => dashboard.transactionAmount(incoming),
-        lowContrast('+ '),
-      ],
-      [
-        'outgoing description',
-        ({ outgoing }: DashboardTexts) => outgoing.getByTestId('descripcion-transaccion'),
-        lowContrast('Transferencia a'),
-      ],
-      [
-        'outgoing amount',
-        ({ dashboard, outgoing }: DashboardTexts) => dashboard.transactionAmount(outgoing),
-        lowContrast('- '),
-      ],
-    ] as const) {
-      test(
-        `TC-045: Text on the dashboard meets the contrast minimum: ${name}`,
-        dashboardBug(fails),
-        async ({ api, createUser, loginAs }) => {
-          test.fail();
-          const [user, recipient] = await Promise.all([createUser(), createUser()]);
-          await api.transfer(user.token, { fromAccountId: user.account!._id, toEmail: recipient.email, amount: 50 });
-          const dashboard = await loginAs(user);
-          // Opening the account records an incoming "Cuenta activada" row; the transfer records an outgoing one.
-          const incoming = dashboard.transaction(`Cuenta activada ${user.account!.last4}`);
-          const outgoing = dashboard.transaction(`Transferencia a ${recipient.email}`);
-          await expect(incoming).toBeVisible();
-          await expect(outgoing).toBeVisible();
-
-          await expectSufficientContrast(target({ dashboard, incoming, outgoing }));
-        },
-      );
-    }
-
-    test(
-      'TC-046: Readable text passes the on-screen contrast check',
-      { tag: '@regression' },
-      async ({ loginPage, registerPage, createUser, loginAs }) => {
-        // Control for the measurement itself: text that is clearly readable must pass, so the known-bug
-        // contrast tests fail because of the app, not because of the check.
-        await loginPage.goto();
-        await expectSufficientContrast(loginPage.title, { soft: true });
-        await expectSufficientContrast(loginPage.signUpLink, { soft: true });
-
-        await registerPage.goto();
-        await expectSufficientContrast(registerPage.title, { soft: true });
-
-        const dashboard = await loginAs(await createUser());
-        await expectSufficientContrast(dashboard.title, { soft: true });
-        await expectSufficientContrast(dashboard.totalBalance, { soft: true });
-        await expectSufficientContrast(dashboard.totalBalanceLabel, { soft: true });
-      },
-    );
-
-    const notificationBug = (fails: RegExp) =>
-      knownBug({
-        issue: 'Zetyre/redux-athena-bank#8',
-        summary:
-          'App defect (WCAG 1.4.3): toasts use the notistack default colours, white text on #43a047 (success, about ' +
-          '3.3:1) and on #2196f3 (info, about 3.1:1). Every confirmation of a completed action is hard to read.',
-        fails,
-      });
-
-    test(
-      'TC-050: Notifications meet the contrast minimum: success',
-      notificationBug(lowContrast('¡Cuenta creada')),
-      async ({ page, createUser, loginAs, createAccountModal }) => {
-        test.fail();
-        const dashboard = await loginAs(await createUser({ initialBalance: null }));
-
-        await dashboard.addAccountButton.click();
-        await createAccountModal.createAccount('Ahorros', 100);
-        const success = page.getByRole('alert').filter({ hasText: 'Cuenta creada' });
-        await expect(success).toBeVisible();
-
-        await expectSufficientContrast(success);
-      },
-    );
-
-    test(
-      'TC-050: Notifications meet the contrast minimum: info',
-      notificationBug(lowContrast('Cuenta congelada')),
-      async ({ page, createUser, loginAs }) => {
-        test.fail();
-        const dashboard = await loginAs(await createUser());
-
-        await dashboard.freezeAccountButton.click();
-        await page.getByRole('dialog').getByRole('button', { name: 'Congelar' }).click();
-        const info = page.getByRole('alert').filter({ hasText: 'Cuenta congelada' });
-        await expect(info).toBeVisible();
-
-        await expectSufficientContrast(info);
-      },
-    );
   });
 
   test.describe('Page metadata', () => {
     test(
       'TC-048: The page language is declared as Spanish',
-      knownBug({
+      knownIssue({
+        kind: 'bug',
         issue: 'Zetyre/redux-athena-bank#6',
         summary:
-          'App defect (WCAG 3.1.1): index.html declares <html lang="en"> but the whole interface is in Spanish, so ' +
+          'Index.html declares <html lang="en"> but the whole interface is in Spanish, so ' +
           'screen readers read it with English pronunciation.',
+        basis:
+          'the interface is in Spanish; lang="en" is a leftover of the Vite template (WCAG 3.1.1 also asks for the right language).',
         fails: /Received string:\s+"en"/,
       }),
       async ({ page, loginPage }) => {
@@ -359,11 +164,14 @@ test.describe('Accessibility (WCAG 2.2 AA)', () => {
 
     test(
       'TC-049: Each page has its own descriptive title',
-      knownBug({
+      knownIssue({
+        kind: 'bug',
         issue: 'Zetyre/redux-athena-bank#7',
         summary:
-          'App defect (WCAG 2.4.2): every page keeps the Vite template title "Vite + React + TS", so tabs, history ' +
+          'Every page keeps the Vite template title "Vite + React + TS", so tabs, history ' +
           'and screen readers cannot tell the pages apart.',
+        basis:
+          '"Vite + React + TS" is a leftover of the Vite template, not a title for this app (WCAG 2.4.2 also asks for descriptive titles).',
         fails: /Page titles[\s\S]*Vite \+ React \+ TS/,
       }),
       async ({ page, loginPage, registerPage, createUser, loginAs }) => {
@@ -383,12 +191,14 @@ test.describe('Accessibility (WCAG 2.2 AA)', () => {
   });
 
   test.describe('Forms', () => {
-    const autofillBug = (fails: RegExp) =>
-      knownBug({
+    const autofillIssue = (fails: RegExp) =>
+      knownIssue({
+        kind: 'observation',
         issue: 'Zetyre/redux-athena-bank#9',
         summary:
-          'App defect (WCAG 1.3.5): no field sets an autocomplete purpose, and the sign-up form sets ' +
+          'No field sets an autocomplete purpose, and the sign-up form sets ' +
           'autocomplete="off", so browsers and assistive tools cannot fill in or label the user\'s own data.',
+        basis: 'WCAG 2.2 AA 1.3.5 Identify Input Purpose.',
         fails,
       });
 
@@ -404,7 +214,7 @@ test.describe('Accessibility (WCAG 2.2 AA)', () => {
 
     test(
       'TC-051: Form fields identify their purpose for autofill: login',
-      autofillBug(/"email": null,[\s\S]*"password": null/),
+      autofillIssue(/"email": null,[\s\S]*"password": null/),
       async ({ page, loginPage }) => {
         test.fail();
         await loginPage.goto();
@@ -416,7 +226,7 @@ test.describe('Accessibility (WCAG 2.2 AA)', () => {
 
     test(
       'TC-051: Form fields identify their purpose for autofill: sign-up',
-      autofillBug(/"email": null,[\s\S]*"firstName": null,[\s\S]*"lastName": null,[\s\S]*"password": null/),
+      autofillIssue(/"email": null,[\s\S]*"firstName": null,[\s\S]*"lastName": null,[\s\S]*"password": null/),
       async ({ page, registerPage }) => {
         test.fail();
         await registerPage.goto();

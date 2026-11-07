@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from '../../fixtures';
 import type { AuthResponse } from '../../types/api';
-import { knownBug } from '../../utils/knownBug';
+import { knownIssue } from '../../utils/knownIssue';
 import { apiUrl } from '../../utils/urls';
 
 test.describe('Login', () => {
@@ -188,11 +188,14 @@ test.describe('Session', () => {
 
   test(
     'TC-083: A stored token the server rejects sends the user back to the login page',
-    knownBug({
-      issue: 'Zetyre/redux-athena-bank#20',
+    knownIssue({
+      kind: 'bug',
+      issue: 'Zetyre/redux-athena-bank#16',
       summary:
         'App defect: RequireAuth only checks that a token exists, and the dashboard turns a 401 into two error ' +
         'toasts, so an expired or revoked session leaves the user on an empty dashboard.',
+      basis:
+        'the app sends visitors without a token to the login page (TC-016); a token the server rejects should lead to the same place.',
       fails: /Expected pattern: \/\\\/login\$\/[\s\S]*Received string:\s+"[^"]*\/dashboard"/,
     }),
     async ({ page, loginPage }) => {

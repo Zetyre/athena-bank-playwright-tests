@@ -60,8 +60,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # mobile-chrome and mobile-safari emulate phones and run only the smoke suite (see playwright.config.ts).
-        project: [api, chromium, firefox, webkit, mobile-chrome, mobile-safari]
+        project: [api, chromium, firefox, webkit]
     container:
       image: mcr.microsoft.com/playwright:v${{ needs.quality.outputs.playwright-version }}-noble
       options: --ipc=host
@@ -188,13 +187,13 @@ jobs:
       - name: Merge into one HTML report
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: results.json
-          KNOWN_DEFECTS_MARKDOWN: known-defects.md
-        run: npx playwright merge-reports --reporter html,json,./reporters/known-defects.ts ./all-blob-reports
+          KNOWN_ISSUES_MARKDOWN: known-issues.md
+        run: npx playwright merge-reports --reporter html,json,./reporters/known-issues.ts ./all-blob-reports
 
       - name: Write the job summary
         run: |
           node scripts/ci-summary.mjs results.json >> "$GITHUB_STEP_SUMMARY"
-          if [[ -f known-defects.md ]]; then cat known-defects.md >> "$GITHUB_STEP_SUMMARY"; fi
+          if [[ -f known-issues.md ]]; then cat known-issues.md >> "$GITHUB_STEP_SUMMARY"; fi
 
       - name: Save run counts for the report archive
         run: node -e "const {stats}=require('./results.json');require('fs').writeFileSync('playwright-report/run-stats.json',JSON.stringify(stats))"

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '../../fixtures';
 import type { AuthResponse, ErrorResponse } from '../../types/api';
-import { knownBug } from '../../utils/knownBug';
+import { knownIssue } from '../../utils/knownIssue';
 import { apiUrl } from '../../utils/urls';
 import { buildUser } from '../../utils/userFactory';
 
@@ -111,11 +111,13 @@ test.describe('Auth API: boundaries and abuse', () => {
 
   test(
     'TC-057: Login rejects a password that only matches the first 72 characters of the real one',
-    knownBug({
+    knownIssue({
+      kind: 'bug',
       issue: 'Zetyre/redux-athena-bank#10',
       summary:
-        'App defect: bcrypt only hashes the first 72 bytes and the backend does not limit password length, ' +
+        'Bcrypt only hashes the first 72 bytes and the backend does not limit password length, ' +
         'so any password sharing those 72 characters is accepted.',
+      basis: 'a password that differs from the registered one is wrong, and login must reject it.',
       fails: /Expected: 401\s+Received: 200/,
     }),
     async ({ api, createUser }) => {
@@ -129,12 +131,14 @@ test.describe('Auth API: boundaries and abuse', () => {
     },
   );
 
-  const nonStringBug = (fails: RegExp) =>
-    knownBug({
+  const nonStringIssue = (fails: RegExp) =>
+    knownIssue({
+      kind: 'bug',
       issue: 'Zetyre/redux-athena-bank#11',
       summary:
-        'App defect: the login handler passes the JSON values to User.findOne and bcrypt.compare without checking ' +
+        'The login handler passes the JSON values to User.findOne and bcrypt.compare without checking ' +
         'they are strings, so an array email is matched with $in and a non-string password throws (500).',
+      basis: 'client input never warrants a server error; the handler already answers 400 for missing fields.',
       fails,
     });
 
@@ -145,7 +149,7 @@ test.describe('Auth API: boundaries and abuse', () => {
   ] as const) {
     test(
       `TC-058: Login with non-string credentials returns 400: ${name}`,
-      nonStringBug(fails),
+      nonStringIssue(fails),
       async ({ request, createUser }) => {
         test.fail();
         const user = await createUser({ initialBalance: null });
@@ -161,11 +165,12 @@ test.describe('Auth API: boundaries and abuse', () => {
 
   test(
     'TC-059: After 10 failed logins in a row, the account is temporarily locked',
-    knownBug({
-      issue: 'Zetyre/redux-athena-bank#12',
+    knownIssue({
+      kind: 'observation',
+      issue: 'OBS-1',
       summary:
-        'App defect: there is no lockout or rate limit on POST /api/auth/login, so a password can be guessed ' +
-        'without limit.',
+        'There is no lockout or rate limit on POST /api/auth/login, so a password can be guessed ' + 'without limit.',
+      basis: 'OWASP ASVS 4.0.3 V2.2.1 (anti-automation against brute force).',
       fails: /Login with the correct password right after 10 failures[\s\S]*Expected: not 200/,
     }),
     async ({ api, createUser }) => {
@@ -182,18 +187,21 @@ test.describe('Auth API: boundaries and abuse', () => {
     },
   );
 
-  const emailCaseBug = (fails: RegExp) =>
-    knownBug({
-      issue: 'Zetyre/redux-athena-bank#13',
+  const emailCaseIssue = (fails: RegExp) =>
+    knownIssue({
+      kind: 'observation',
+      issue: 'OBS-2',
       summary:
-        'App defect: emails are stored and looked up exactly as typed, so the same address in different case ' +
+        'Emails are stored and looked up exactly as typed, so the same address in different case ' +
         'is a different user.',
+      basis:
+        'common practice is to match email addresses case-insensitively (RFC 5321 allows a case-sensitive local part, so this is a design choice).',
       fails,
     });
 
   test(
     'TC-060: Sign-up with an email already in use in different letter case returns 409',
-    emailCaseBug(/Expected: 409\s+Received: 201/),
+    emailCaseIssue(/Expected: 409\s+Received: 201/),
     async ({ api, createUser }) => {
       test.fail();
       const user = await createUser({ initialBalance: null });
@@ -206,7 +214,7 @@ test.describe('Auth API: boundaries and abuse', () => {
 
   test(
     'TC-060: Login with the email in different letter case succeeds',
-    emailCaseBug(/Expected: 200\s+Received: 401/),
+    emailCaseIssue(/Expected: 200\s+Received: 401/),
     async ({ api, createUser }) => {
       test.fail();
       const user = await createUser({ initialBalance: null });
@@ -217,12 +225,15 @@ test.describe('Auth API: boundaries and abuse', () => {
     },
   );
 
-  const signUpValidationBug = (fails: RegExp) =>
-    knownBug({
-      issue: 'Zetyre/redux-athena-bank#14',
+  const signUpValidationIssue = (fails: RegExp) =>
+    knownIssue({
+      kind: 'observation',
+      issue: 'OBS-3',
       summary:
-        'App defect: sign-up only checks that the fields are present; it accepts any email text and a password ' +
+        'Sign-up only checks that the fields are present; it accepts any email text and a password ' +
         'of any length, in the API and in the form.',
+      basis:
+        'common practice and NIST SP 800-63B 5.1.1.2 (passwords of at least 8 characters); the login form already requires an email format.',
       fails,
     });
 
@@ -232,7 +243,7 @@ test.describe('Auth API: boundaries and abuse', () => {
   ] as const) {
     test(
       `TC-061: Sign-up rejects invalid data with 400: ${name}`,
-      signUpValidationBug(/Expected: 400\s+Received: 201/),
+      signUpValidationIssue(/Expected: 400\s+Received: 201/),
       async ({ api }) => {
         test.fail();
 
@@ -247,11 +258,14 @@ test.describe('Auth API: boundaries and abuse', () => {
 test.describe('Auth API: session', () => {
   test(
     'TC-076: A token stops working after the user logs out',
-    knownBug({
-      issue: 'Zetyre/redux-athena-bank#21',
+    knownIssue({
+      kind: 'observation',
+      issue: 'OBS-5',
       summary:
-        'App defect: logout only clears a cookie the app never sets; the JWT stays valid for its full 7 days, ' +
+        'Logout only clears a cookie the app never sets; the JWT stays valid for its full 7 days, ' +
         'so a copied token keeps working after the user logs out.',
+      basis:
+        'OWASP ASVS 4.0.3 V3.3.1 (logout invalidates the session); stateless tokens are a design choice the app made.',
       fails: /Accounts read with the token after logout[\s\S]*Expected: 401\s+Received: 200/,
     }),
     async ({ api, createUser }) => {

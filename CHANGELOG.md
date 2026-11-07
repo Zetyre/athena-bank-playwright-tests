@@ -7,24 +7,34 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- Login and sign-up boundary and abuse coverage (TC-052 to TC-062): empty and malformed input blocked by the
-  form, masked password, busy login button, login page at 320px, 10,000-character and oversized input,
-  passwords longer than 72 characters, non-string credentials, brute-force lockout, email letter case, and
-  sign-up data validation.
-- Five login and sign-up defects documented as `test.fail()` known bugs, with annotated screenshots
-  (redux-athena-bank#10 to #14).
-- `mobile-chrome` (Pixel 7) and `mobile-safari` (iPhone 14) projects run the smoke suite on emulated phones,
-  locally and as two more CI matrix jobs.
-- Coverage of every remaining app feature (TC-063 to TC-085): account types, deposits, freezing and unfreezing,
-  closing accounts, the transaction history, frozen accounts in transfers, ownership checks, amounts sent as
-  text, fractions of a cent, malformed ids, the session after logout or with a rejected token, the total
-  balance, the create-account form, and stored HTML in user data.
-- TC-085 automates the concurrent-transfer defect (redux-athena-bank#2), until now reproduced only by hand.
-- Eight more defects documented as `test.fail()` known bugs, with annotated screenshots
-  (redux-athena-bank#15 to #22).
+- Coverage of every app feature still untested: login boundaries and abuse (empty, malformed, huge and non-string
+  input, long passwords, lockout, email letter case), account types, deposits, freezing, closing accounts, the
+  transaction history, frozen accounts in transfers, ownership checks, amounts sent as text, cents, malformed ids,
+  the session after logout or with a rejected token, the total balance, stored HTML in user data, and the
+  concurrent-transfer bug (redux-athena-bank#2), until now only reproduced by hand.
+- Test case catalogue (`docs/test-cases.md`): what every test checks, where its expected result comes from, and how
+  it is built.
 - Page objects for the add-funds, freeze and delete dialogs, and API client methods for deposits, freezing,
   deleting, the history and logout.
 - README: what is deliberately not tested, and why.
+
+### Changed
+
+- Findings are classified as **bugs** (the app contradicts itself or basic correctness) or **observations** (the
+  expectation comes only from a standard or common practice, since the app has no specification). 13 bugs, 9
+  observations. Bugs are reported as issues on the app's repository; new observations are listed in the README
+  (`OBS-1` to `OBS-5`).
+- `knownBug()` became `knownIssue()`, which also records the kind and the basis of the expectation and tags tests
+  `@bug` or `@observation`. The known-defects reporter became the known-issues reporter and lists bugs and
+  observations separately.
+- TC-005 also checks the redirect to login; TC-019 also checks the new account's balance, type and total.
+- README rewritten shorter.
+
+### Removed
+
+- On-screen contrast measurement from screenshot pixels (`measureTextContrast`) and its tests (TC-044, TC-045,
+  TC-046, TC-050). axe-core scans stay; the contrast observations (#4, #8) stay documented with screenshots.
+- TC-001 and TC-013, which other tests already covered.
 
 ## [1.1.0] - 2026-11-06
 
