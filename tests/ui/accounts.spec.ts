@@ -28,6 +28,8 @@ test.describe('Account management', () => {
     'TC-078: A frozen account cannot be chosen to add funds or send money, until it is unfrozen',
     { tag: '@regression' },
     async ({ loginAs, createUser, freezeAccountModal, addFundsModal, sendMoneyModal }) => {
+      // Five dialogs opened and closed in one flow: in WebKit on CI this takes over 30 s, so allow 3x the default.
+      test.slow();
       const user = await createUser({ initialBalance: 1000 });
       const last4 = user.account!.last4;
       const dashboard = await loginAs(user);
