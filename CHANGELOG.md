@@ -5,6 +5,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-09
+
+Final version: every feature of the app covered, findings classified as bugs or observations, and the suite
+trimmed to what a demo app needs. 79 test cases, 97 tests, 179 runs.
+
 ### Added
 
 - Coverage of every app feature still untested: login boundaries and abuse (empty, malformed, huge and non-string
@@ -29,14 +34,20 @@ All notable changes to this project are documented here. The format follows
   observations separately.
 - TC-005 also checks the redirect to login; TC-019 also checks the new account's balance, type and total.
 - README rewritten shorter.
+- Wording fixes in test titles and known-issue summaries.
 - `randomAmount` picks a plain `Math.random()` amount and records it in the report; the seeded hash helper and
   `PLAYWRIGHT_TEST_SEED` are gone.
 - Tests that prove a form blocked a submit share one helper, `countRequests()`.
 
+### Fixed
+
+- TC-078 could time out in WebKit under full parallel load: it now waits for the send-money dialog to finish
+  closing before clicking the account card.
+
 ### Removed
 
 - On-screen contrast measurement from screenshot pixels (`measureTextContrast`) and its tests (TC-044, TC-045,
-  TC-046, TC-050). axe-core scans stay; the contrast observations (#4, #8) stay documented with screenshots.
+  TC-046, TC-050). axe-core scans stay; the contrast observations (redux-athena-bank#4 and #8) stay documented with screenshots.
 - TC-001 and TC-013, which other tests already covered.
 - Unused code: `frontendUrl()` and `LoginPage.signUpLink`.
 
@@ -96,6 +107,7 @@ First stable version of the framework.
 - Parallel runs no longer race on shared sender and receiver accounts.
 - The Pages archive now prunes old reports and also publishes failed runs.
 
-[Unreleased]: https://github.com/Zetyre/athena-bank-playwright-tests/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/Zetyre/athena-bank-playwright-tests/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/Zetyre/athena-bank-playwright-tests/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Zetyre/athena-bank-playwright-tests/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Zetyre/athena-bank-playwright-tests/releases/tag/v1.0.0

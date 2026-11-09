@@ -5,7 +5,7 @@ export type AxeResults = Awaited<ReturnType<AxeBuilder['analyze']>>;
 type Violation = AxeResults['violations'][number];
 
 /** Rules for WCAG 2.2 level A and AA, the level most accessibility laws and company policies require. */
-export const WCAG_AA_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+const WCAG_AA_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
 export type ScanOptions = {
   /** CSS selectors to leave out of the scan, e.g. an element whose issue is tracked separately. */
@@ -13,7 +13,7 @@ export type ScanOptions = {
 };
 
 /** Waits for finite animations (MUI fades, ripples) to finish. Infinite ones, like spinners, are ignored. */
-export async function waitForAnimationsToSettle(page: Page): Promise<void> {
+async function waitForAnimationsToSettle(page: Page): Promise<void> {
   await page.waitForFunction(() =>
     document
       .getAnimations()

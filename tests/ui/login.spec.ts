@@ -183,7 +183,7 @@ test.describe('Session', () => {
       kind: 'bug',
       issue: 'Zetyre/redux-athena-bank#16',
       summary:
-        'App defect: RequireAuth only checks that a token exists, and the dashboard turns a 401 into two error ' +
+        'The route guard (RequireAuth) only checks that a token exists, and the dashboard turns a 401 into two error ' +
         'toasts, so an expired or revoked session leaves the user on an empty dashboard.',
       basis:
         'the app sends visitors without a token to the login page (TC-016); a token the server rejects should lead to the same place.',
