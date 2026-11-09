@@ -5,6 +5,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-11-09
+
+### Fixed
+
+- TC-078 gets three times the default timeout (`test.slow()`). It opens and closes five dialogs in one flow, which
+  takes about 34 s in WebKit on CI, over the 30 s default, so `main` failed after 1.2.0. Pull requests only run the
+  smoke tests in WebKit, so it was not caught there.
+
 ## [1.2.0] - 2026-11-09
 
 Final version: every feature of the app covered, findings classified as bugs or observations, and the suite
@@ -107,7 +115,8 @@ First stable version of the framework.
 - Parallel runs no longer race on shared sender and receiver accounts.
 - The Pages archive now prunes old reports and also publishes failed runs.
 
-[Unreleased]: https://github.com/Zetyre/athena-bank-playwright-tests/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/Zetyre/athena-bank-playwright-tests/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/Zetyre/athena-bank-playwright-tests/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/Zetyre/athena-bank-playwright-tests/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Zetyre/athena-bank-playwright-tests/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Zetyre/athena-bank-playwright-tests/releases/tag/v1.0.0
