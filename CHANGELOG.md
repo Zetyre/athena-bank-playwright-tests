@@ -5,6 +5,41 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Coverage of every app feature still untested: login boundaries and abuse (empty, malformed, huge and non-string
+  input, long passwords, lockout, email letter case), account types, deposits, freezing, closing accounts, the
+  transaction history, frozen accounts in transfers, ownership checks, amounts sent as text, cents, malformed ids,
+  the session after logout or with a rejected token, the total balance, stored HTML in user data, and the
+  concurrent-transfer bug (redux-athena-bank#2), until now only reproduced by hand.
+- Test case catalogue (`docs/test-cases.md`): what every test checks, where its expected result comes from, and how
+  it is built.
+- Page objects for the add-funds, freeze and delete dialogs, and API client methods for deposits, freezing,
+  deleting, the history and logout.
+- README: what is deliberately not tested, and why.
+
+### Changed
+
+- Findings are classified as **bugs** (the app contradicts itself or basic correctness) or **observations** (the
+  expectation comes only from a standard or common practice, since the app has no specification). 13 bugs, 9
+  observations. Bugs are reported as issues on the app's repository; new observations are listed in the README
+  (`OBS-1` to `OBS-5`).
+- `knownBug()` became `knownIssue()`, which also records the kind and the basis of the expectation and tags tests
+  `@bug` or `@observation`. The known-defects reporter became the known-issues reporter and lists bugs and
+  observations separately.
+- TC-005 also checks the redirect to login; TC-019 also checks the new account's balance, type and total.
+- README rewritten shorter.
+- `randomAmount` picks a plain `Math.random()` amount and records it in the report; the seeded hash helper and
+  `PLAYWRIGHT_TEST_SEED` are gone.
+- Tests that prove a form blocked a submit share one helper, `countRequests()`.
+
+### Removed
+
+- On-screen contrast measurement from screenshot pixels (`measureTextContrast`) and its tests (TC-044, TC-045,
+  TC-046, TC-050). axe-core scans stay; the contrast observations (#4, #8) stay documented with screenshots.
+- TC-001 and TC-013, which other tests already covered.
+- Unused code: `frontendUrl()` and `LoginPage.signUpLink`.
+
 ## [1.1.0] - 2026-11-06
 
 Accessibility coverage, documented defects and a reporter that keeps known bugs apart from real passes.

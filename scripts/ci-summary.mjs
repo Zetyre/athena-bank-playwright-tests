@@ -6,7 +6,7 @@ const report = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const { expected = 0, unexpected = 0, flaky = 0, skipped = 0, duration = 0 } = report.stats;
 
 const failed = [];
-let knownDefects = 0;
+let knownIssues = 0;
 const flakyTests = [];
 const visit = (suite, titles = []) => {
   const path = suite.title ? [...titles, suite.title] : titles;
@@ -16,7 +16,7 @@ const visit = (suite, titles = []) => {
       if (test.status === 'unexpected') failed.push(name);
       if (test.status === 'flaky') flakyTests.push(name);
       // test.fail() tests that failed as declared count as "expected": report them apart from real passes.
-      if (test.status === 'expected' && test.expectedStatus === 'failed') knownDefects++;
+      if (test.status === 'expected' && test.expectedStatus === 'failed') knownIssues++;
     }
   }
   for (const child of suite.suites ?? []) visit(child, path);
@@ -26,9 +26,9 @@ for (const suite of report.suites) visit(suite);
 const lines = [
   `## Playwright results ${unexpected > 0 ? '❌' : '✅'}`,
   '',
-  '| Passed | Known defects (expected to fail) | Failed | Flaky | Skipped | Duration |',
+  '| Passed | Known bugs and observations (expected to fail) | Failed | Flaky | Skipped | Duration |',
   '| --- | --- | --- | --- | --- | --- |',
-  `| ${expected - knownDefects} | ${knownDefects} | ${unexpected} | ${flaky} | ${skipped} | ${(duration / 1000).toFixed(0)}s |`,
+  `| ${expected - knownIssues} | ${knownIssues} | ${unexpected} | ${flaky} | ${skipped} | ${(duration / 1000).toFixed(0)}s |`,
   '',
 ];
 if (failed.length) lines.push('### Failed', ...failed.map(name => `- ${name}`), '');

@@ -15,11 +15,11 @@ export default defineConfig({
   // starts crashing Firefox's software compositor. CI runs one browser per job, so it keeps the default.
   workers: isCI ? undefined : '30%',
   // On CI each browser runs in its own job and writes a blob report; a later job merges them into one HTML report.
-  // The known-defects reporter lists @known-bug tests apart from real passes and fails the run when one fails for a
-  // reason other than the one it declares.
+  // The known-issues reporter lists the open bugs and observations apart from real passes, and fails the run when a
+  // known-issue test fails for a reason other than the one it declares.
   reporter: isCI
-    ? [['github'], ['list'], ['blob'], ['./reporters/known-defects.ts']]
-    : [['list'], ['html', { open: 'never' }], ['./reporters/known-defects.ts']],
+    ? [['github'], ['list'], ['blob'], ['./reporters/known-issues.ts']]
+    : [['list'], ['html', { open: 'never' }], ['./reporters/known-issues.ts']],
   expect: {
     timeout: 10_000,
   },

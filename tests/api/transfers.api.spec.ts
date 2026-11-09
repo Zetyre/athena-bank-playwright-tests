@@ -2,7 +2,8 @@ import type { APIResponse } from '@playwright/test';
 import { expect, test } from '../../fixtures';
 import type { Account, BankUser, ErrorResponse } from '../../types/api';
 import type { AthenaApi } from '../../utils/athenaApi';
-import { knownBug } from '../../utils/knownBug';
+import { knownIssue } from '../../utils/knownIssue';
+import { apiUrl } from '../../utils/urls';
 import { buildUser } from '../../utils/userFactory';
 
 async function balanceOf(api: AthenaApi, user: BankUser): Promise<number> {
@@ -134,11 +135,13 @@ test.describe('Transfers API', () => {
 
   test(
     'TC-036: A transfer to your own account does not change the balance',
-    knownBug({
+    knownIssue({
+      kind: 'bug',
       issue: 'Zetyre/redux-athena-bank#1',
       summary:
-        'App defect: routes/transactions.js loads the same account twice as sender and recipient and saves both, ' +
+        'The transfer handler (routes/transactions.js) loads the same account twice, as sender and recipient, and saves both, ' +
         'so a self-transfer of X credits the account by X.',
+      basis: 'a transfer moves money between accounts and never changes the total held: money is conserved.',
       fails: /Expected: 1000\s+Received: 1100/,
     }),
     async ({ api, createUser }) => {
@@ -148,6 +151,95 @@ test.describe('Transfers API', () => {
       await api.transfer(user.token, { fromAccountId: user.account!._id, toEmail: user.email, amount: 100 });
 
       expect(await balanceOf(api, user)).toBe(1000);
+    },
+  );
+});
+
+test.describe('Transfers API: frozen accounts and amount types', () => {
+  for (const [side, frozenUser] of [
+    ['send', 'sender'],
+    ['receive', 'receiver'],
+  ] as const) {
+    test(`TC-075: A frozen account cannot ${side} money`, { tag: '@regression' }, async ({ api, createUser }) => {
+      const users = {
+        sender: await createUser({ initialBalance: 1000 }),
+        receiver: await createUser({ initialBalance: 0 }),
+      };
+      const frozen = users[frozenUser];
+      expect((await api.freeze(frozen.token, frozen.account!._id, true)).status()).toBe(200);
+
+      const response = await api.transfer(users.sender.token, {
+        fromAccountId: users.sender.account!._id,
+        toEmail: users.receiver.email,
+        amount: 100,
+      });
+
+      await expectError(
+        response,
+        400,
+        frozenUser === 'sender' ? 'Sender account is frozen' : 'Recipient account is frozen',
+      );
+      expect(await balanceOf(api, users.sender)).toBe(1000);
+      expect(await balanceOf(api, users.receiver)).toBe(0);
+    });
+  }
+
+  test(
+    'TC-074: A transfer amount sent as text credits the receiver by that amount',
+    knownIssue({
+      kind: 'bug',
+      issue: 'Zetyre/redux-athena-bank#12',
+      summary:
+        'The transfer handler does recipient.balance += amount without converting amount to a ' +
+        'number, so "100" is appended as text: the receiver\'s 1000 becomes 1000100 while the sender loses 100.',
+      basis: 'an amount of 100 must add 100; appending it as text creates money.',
+      fails: /Expected: 1100\s+Received: 1000100/,
+    }),
+    async ({ request, api, createUser }) => {
+      test.fail();
+      const [sender, receiver] = await Promise.all([
+        createUser({ initialBalance: 1000 }),
+        createUser({ initialBalance: 1000 }),
+      ]);
+
+      await request.post(apiUrl('/api/transactions/transfer'), {
+        headers: { Authorization: `Bearer ${sender.token}` },
+        data: { fromAccountId: sender.account!._id, toEmail: receiver.email, amount: '100' },
+      });
+
+      expect(await balanceOf(api, sender)).toBe(900);
+      expect(await balanceOf(api, receiver)).toBe(1100);
+    },
+  );
+
+  test(
+    'TC-085: Simultaneous transfers of the whole balance: only one succeeds',
+    knownIssue({
+      kind: 'bug',
+      issue: 'Zetyre/redux-athena-bank#2',
+      summary:
+        'The transfer handler reads the balance, checks it and saves it in separate steps, so ' +
+        'simultaneous transfers all pass the check; each is recorded but only one balance update survives.',
+      basis:
+        'the handler\'s own balance check ("Insufficient funds") must hold for every transfer, so five transfers of the whole balance cannot all succeed.',
+      fails: /Successful transfers of the whole balance[\s\S]*Expected: 1\s+Received: [2-5]/,
+    }),
+    async ({ api, createUser }) => {
+      test.fail();
+      const [sender, receiver] = await Promise.all([
+        createUser({ initialBalance: 1000 }),
+        createUser({ initialBalance: 0 }),
+      ]);
+
+      // The race reproduced in 40 of 40 local runs with 2 or 5 parallel requests.
+      const responses = await Promise.all(
+        Array.from({ length: 5 }, () =>
+          api.transfer(sender.token, { fromAccountId: sender.account!._id, toEmail: receiver.email, amount: 1000 }),
+        ),
+      );
+
+      const succeeded = responses.filter(response => response.status() === 200).length;
+      expect(succeeded, 'Successful transfers of the whole balance').toBe(1);
     },
   );
 });

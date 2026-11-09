@@ -1,4 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import { expect, test } from '../../fixtures';
+import { countRequests } from '../../utils/requests';
 
 test.describe('Accounts and transfers', () => {
   test(
@@ -13,6 +15,9 @@ test.describe('Accounts and transfers', () => {
 
       await expect(page.getByText('Cuenta creada exitosamente')).toBeVisible();
       await expect(page.getByTestId('tarjeta-cuenta')).toHaveCount(1);
+      await expect(dashboard.accountBalance).toHaveText('$2500.00');
+      await expect(dashboard.accountType).toHaveText('Ahorros');
+      await expect(dashboard.totalBalance).toHaveText('$2,500.00');
     },
   );
 
@@ -38,44 +43,13 @@ test.describe('Accounts and transfers', () => {
       const sender = await createUser({ initialBalance: 50 });
       const receiver = await createUser();
       const dashboard = await loginAs(sender);
-      const transferRequests: string[] = [];
-      page.on('request', request => {
-        if (request.url().includes('/api/transactions/transfer')) transferRequests.push(request.url());
-      });
+      const transferRequests = countRequests(page, 'POST', '/api/transactions/transfer');
 
       await dashboard.sendMoneyButton.click();
       await sendMoneyModal.send(receiver.email, 51);
 
       await expect(sendMoneyModal.insufficientBalanceError).toBeVisible();
-      expect(transferRequests, 'The UI should not call the transfer API').toHaveLength(0);
-    },
-  );
-
-  test(
-    'TC-013: A transfer made through the API appears in the receiver dashboard',
-    { tag: '@regression' },
-    async ({ api, createUser, randomAmount, openDashboardInNewContext }) => {
-      // Two users and two browser contexts: allow 3x the default timeout.
-      test.slow();
-      const sender = await createUser();
-      const receiver = await createUser();
-      const amount = randomAmount(1, 1000);
-
-      await test.step(`Transfer ${amount} through the API`, async () => {
-        const response = await api.transfer(sender.token, {
-          fromAccountId: sender.account!._id,
-          toEmail: receiver.email,
-          amount,
-        });
-        expect(response.status()).toBe(200);
-      });
-
-      await test.step('Verify the incoming transfer in the receiver dashboard', async () => {
-        const receiverDashboard = await openDashboardInNewContext(receiver);
-        const incoming = receiverDashboard.transaction(`Transferencia de ${sender.email}`);
-        await expect(incoming).toHaveCount(1);
-        await expect(receiverDashboard.transactionAmount(incoming)).toContainText(amount.toFixed(2));
-      });
+      expect(transferRequests(), 'The UI should not call the transfer API').toBe(0);
     },
   );
 
@@ -108,6 +82,33 @@ test.describe('Accounts and transfers', () => {
         await expect(incoming).toHaveCount(1);
         await expect(receiverDashboard.transactionAmount(incoming)).toContainText(amount.toFixed(2));
       });
+    },
+  );
+
+  test(
+    "TC-084: HTML in another user's name and email is shown as text, never run",
+    { tag: '@regression' },
+    async ({ page, api, loginAs, createUser }) => {
+      // Sign-up accepts any text as the email (observation OBS-3), and the receiver's history shows the sender's
+      // email, so it is a path for stored cross-site scripting into another user's dashboard.
+      const payload = '<img src=x onerror="window.__xss=1">';
+      const sender = await createUser({
+        initialBalance: 100,
+        overrides: { firstName: '<script>window.__xss=1</script>', email: `${payload}${randomUUID()}@example.com` },
+      });
+      const receiver = await createUser({ initialBalance: 0 });
+      const transfer = await api.transfer(sender.token, {
+        fromAccountId: sender.account!._id,
+        toEmail: receiver.email,
+        amount: 5,
+      });
+      expect(transfer.status()).toBe(200);
+
+      const dashboard = await loginAs(receiver);
+
+      await expect(dashboard.transaction(`Transferencia de ${sender.email}`)).toHaveCount(1);
+      await expect(dashboard.transactionItems.locator('img, script')).toHaveCount(0);
+      expect(await page.evaluate(() => (window as { __xss?: number }).__xss)).toBeUndefined();
     },
   );
 });

@@ -35,6 +35,18 @@ export type TransferRequest = {
   amount: number;
 };
 
+export type Transaction = {
+  _id: string;
+  date: string;
+  user: string;
+  accountId: string;
+  type: 'transfer' | 'deposit' | 'withdraw' | 'account_opened' | 'account_closed' | 'status_change';
+  direction: 'in' | 'out' | 'neutral';
+  amount?: number;
+  description?: string;
+  last4?: string;
+};
+
 export type ErrorResponse = {
   message: string;
 };

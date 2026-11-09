@@ -1,5 +1,6 @@
 import { test as base, expect, type Page } from '@playwright/test';
-import { randomUUID } from 'node:crypto';
+import { DeleteAccountModal, FreezeAccountModal } from '../pages/accountDialogs';
+import { AddFundsModal } from '../pages/addFundsModal';
 import { CreateAccountModal } from '../pages/createAccountModal';
 import { DashboardPage } from '../pages/dashboardPage';
 import { LoginPage } from '../pages/loginPage';
@@ -7,7 +8,6 @@ import { RegisterPage } from '../pages/registerPage';
 import { SendMoneyModal } from '../pages/sendMoneyModal';
 import type { Account, AuthResponse, BankUser, NewUser } from '../types/api';
 import { AthenaApi } from '../utils/athenaApi';
-import { seededInteger } from '../utils/testRandom';
 import { frontendBaseUrl } from '../utils/urls';
 import { buildUser } from '../utils/userFactory';
 
@@ -25,13 +25,16 @@ type Fixtures = {
   loginAs: (user: BankUser) => Promise<DashboardPage>;
   /** Opens the dashboard as `user` in a second, isolated browser context. */
   openDashboardInNewContext: (user: BankUser) => Promise<DashboardPage>;
-  /** Random integer amount that can be reproduced with PLAYWRIGHT_TEST_SEED. */
+  /** A random whole amount between min and max, recorded in the test's report so a failure shows what was used. */
   randomAmount: (min: number, max: number) => number;
   loginPage: LoginPage;
   registerPage: RegisterPage;
   dashboardPage: DashboardPage;
   createAccountModal: CreateAccountModal;
   sendMoneyModal: SendMoneyModal;
+  addFundsModal: AddFundsModal;
+  freezeAccountModal: FreezeAccountModal;
+  deleteAccountModal: DeleteAccountModal;
 };
 
 export const test = base.extend<Fixtures>({
@@ -84,12 +87,11 @@ export const test = base.extend<Fixtures>({
   },
 
   randomAmount: async ({}, use, testInfo) => {
-    const seed = process.env.PLAYWRIGHT_TEST_SEED ?? randomUUID();
-    testInfo.annotations.push({ type: 'random-seed', description: seed });
-    let calls = 0;
-    await use((min, max) =>
-      seededInteger(`${seed}:${testInfo.project.name}:${testInfo.titlePath.join('>')}:${calls++}`, min, max),
-    );
+    await use((min, max) => {
+      const amount = min + Math.floor(Math.random() * (max - min + 1));
+      testInfo.annotations.push({ type: 'random-amount', description: String(amount) });
+      return amount;
+    });
   },
 
   loginPage: async ({ page }, use) => {
@@ -106,6 +108,15 @@ export const test = base.extend<Fixtures>({
   },
   sendMoneyModal: async ({ page }, use) => {
     await use(new SendMoneyModal(page));
+  },
+  addFundsModal: async ({ page }, use) => {
+    await use(new AddFundsModal(page));
+  },
+  freezeAccountModal: async ({ page }, use) => {
+    await use(new FreezeAccountModal(page));
+  },
+  deleteAccountModal: async ({ page }, use) => {
+    await use(new DeleteAccountModal(page));
   },
 });
 

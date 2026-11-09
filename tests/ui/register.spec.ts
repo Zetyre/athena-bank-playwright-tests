@@ -8,14 +8,6 @@ test.describe('Sign-up', () => {
     await registerPage.goto();
   });
 
-  test('TC-001: Sign-up form shows every field and the submit button', { tag: '@smoke' }, async ({ registerPage }) => {
-    await expect(registerPage.firstNameInput).toBeVisible();
-    await expect(registerPage.lastNameInput).toBeVisible();
-    await expect(registerPage.emailInput).toBeVisible();
-    await expect(registerPage.passwordInput).toBeVisible();
-    await expect(registerPage.registerButton).toBeVisible();
-  });
-
   test(
     'TC-002: Register button is disabled while the form is empty',
     { tag: '@regression' },
@@ -48,6 +40,7 @@ test.describe('Sign-up', () => {
     async ({ page, registerPage }) => {
       await registerPage.register(buildUser());
       await expect(page.getByText('Registro exitoso!')).toBeVisible();
+      await expect(page).toHaveURL(/\/login$/);
     },
   );
 

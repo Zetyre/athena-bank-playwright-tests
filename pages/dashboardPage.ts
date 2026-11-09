@@ -7,7 +7,6 @@ export class DashboardPage {
   readonly logoutButton: Locator;
   readonly transactionItems: Locator;
   readonly totalBalance: Locator;
-  readonly totalBalanceLabel: Locator;
   /** Account card fields and actions. With several accounts these match every card; tests use one account. */
   readonly accountType: Locator;
   readonly accountBalance: Locator;
@@ -21,10 +20,10 @@ export class DashboardPage {
     this.logoutButton = page.getByTestId('boton-logout');
     this.transactionItems = page.getByTestId('item-transaccion');
     this.totalBalance = page.getByTestId('saldo-total-dashboard');
-    this.totalBalanceLabel = page.getByTestId('saldo-total-dashboard-label');
     this.accountType = page.getByTestId('tipo-cuenta');
     this.accountBalance = page.getByTestId('saldo-cuenta');
-    this.freezeAccountButton = page.getByTestId('boton-congelar-cuenta');
+    // The freeze dialog's confirm button reuses this test id, so scope it to the account card.
+    this.freezeAccountButton = page.getByTestId('tarjeta-cuenta').getByTestId('boton-congelar-cuenta');
     this.addFundsButton = page.getByTestId('boton-agregar-fondos');
   }
 

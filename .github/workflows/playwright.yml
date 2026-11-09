@@ -78,7 +78,6 @@ jobs:
       JWT_SECRET: ci-only-throwaway-secret # Signs tokens for an ephemeral CI database only.
       PLAYWRIGHT_BASE_URL: http://localhost:3000
       API_BASE_URL: http://localhost:6007
-      PLAYWRIGHT_TEST_SEED: ${{ github.run_id }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -187,13 +186,13 @@ jobs:
       - name: Merge into one HTML report
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: results.json
-          KNOWN_DEFECTS_MARKDOWN: known-defects.md
-        run: npx playwright merge-reports --reporter html,json,./reporters/known-defects.ts ./all-blob-reports
+          KNOWN_ISSUES_MARKDOWN: known-issues.md
+        run: npx playwright merge-reports --reporter html,json,./reporters/known-issues.ts ./all-blob-reports
 
       - name: Write the job summary
         run: |
           node scripts/ci-summary.mjs results.json >> "$GITHUB_STEP_SUMMARY"
-          if [[ -f known-defects.md ]]; then cat known-defects.md >> "$GITHUB_STEP_SUMMARY"; fi
+          if [[ -f known-issues.md ]]; then cat known-issues.md >> "$GITHUB_STEP_SUMMARY"; fi
 
       - name: Save run counts for the report archive
         run: node -e "const {stats}=require('./results.json');require('fs').writeFileSync('playwright-report/run-stats.json',JSON.stringify(stats))"
