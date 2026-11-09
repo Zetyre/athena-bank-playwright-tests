@@ -1,7 +1,6 @@
 import { expect, test } from '../../fixtures';
-import type { Account } from '../../types/api';
 import { knownIssue } from '../../utils/knownIssue';
-import { apiUrl } from '../../utils/urls';
+import { countRequests } from '../../utils/requests';
 
 test.describe('Account management', () => {
   test(
@@ -134,13 +133,10 @@ test.describe('Account management', () => {
   test(
     'TC-082: The create-account form requires a type and a non-negative amount before sending anything',
     { tag: '@regression' },
-    async ({ page, loginAs, createUser, createAccountModal }) => {
+    async ({ page, api, loginAs, createUser, createAccountModal }) => {
       const user = await createUser({ initialBalance: null });
       const dashboard = await loginAs(user);
-      let createRequests = 0;
-      page.on('request', request => {
-        if (request.url() === apiUrl('/api/accounts') && request.method() === 'POST') createRequests++;
-      });
+      const createRequests = countRequests(page, 'POST', '/api/accounts');
 
       await dashboard.addAccountButton.click();
       await createAccountModal.initialAmountInput.fill('-50');
@@ -148,11 +144,8 @@ test.describe('Account management', () => {
 
       await expect(page.getByText('Tipo de cuenta requerido')).toBeVisible();
       await expect(page.getByText('Monto debe ser un número mayor o igual a 0')).toBeVisible();
-      expect(createRequests).toBe(0);
-      const accounts = (await (
-        await page.request.get(apiUrl('/api/accounts'), { headers: { Authorization: `Bearer ${user.token}` } })
-      ).json()) as Account[];
-      expect(accounts).toEqual([]);
+      expect(createRequests()).toBe(0);
+      expect(await (await api.getAccounts(user.token)).json()).toEqual([]);
     },
   );
 });

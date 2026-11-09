@@ -148,7 +148,7 @@ test.describe('Accessibility (WCAG 2.2 AA)', () => {
         kind: 'bug',
         issue: 'Zetyre/redux-athena-bank#6',
         summary:
-          'Index.html declares <html lang="en"> but the whole interface is in Spanish, so ' +
+          'The page declares <html lang="en"> in index.html, but the whole interface is in Spanish, so ' +
           'screen readers read it with English pronunciation.',
         basis:
           'the interface is in Spanish; lang="en" is a leftover of the Vite template (WCAG 3.1.1 also asks for the right language).',

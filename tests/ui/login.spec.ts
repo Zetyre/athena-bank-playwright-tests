@@ -1,7 +1,7 @@
-import type { Page } from '@playwright/test';
 import { expect, test } from '../../fixtures';
 import type { AuthResponse } from '../../types/api';
 import { knownIssue } from '../../utils/knownIssue';
+import { countRequests } from '../../utils/requests';
 import { apiUrl } from '../../utils/urls';
 
 test.describe('Login', () => {
@@ -73,7 +73,7 @@ test.describe('Login form validation', () => {
     'TC-052: Submitting the empty login form sends no request and flags the email as required',
     { tag: '@regression' },
     async ({ page, loginPage }) => {
-      const loginRequests = trackLoginRequests(page);
+      const loginRequests = countRequests(page, 'POST', '/api/auth/login');
 
       await loginPage.loginButton.click();
 
@@ -89,7 +89,7 @@ test.describe('Login form validation', () => {
     'TC-053: A malformed email is rejected by the form before any request is sent',
     { tag: '@regression' },
     async ({ page, loginPage }) => {
-      const loginRequests = trackLoginRequests(page);
+      const loginRequests = countRequests(page, 'POST', '/api/auth/login');
 
       await loginPage.login({ email: 'not-an-email', password: 'Password123!' });
 
@@ -147,15 +147,6 @@ test.describe('Login form validation', () => {
     },
   );
 });
-
-/** Counts requests to the login endpoint from now on. */
-function trackLoginRequests(page: Page): () => number {
-  let count = 0;
-  page.on('request', request => {
-    if (request.url() === apiUrl('/api/auth/login')) count++;
-  });
-  return () => count;
-}
 
 test.describe('Session', () => {
   test(

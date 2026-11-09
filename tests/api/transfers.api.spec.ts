@@ -139,7 +139,7 @@ test.describe('Transfers API', () => {
       kind: 'bug',
       issue: 'Zetyre/redux-athena-bank#1',
       summary:
-        'Routes/transactions.js loads the same account twice as sender and recipient and saves both, ' +
+        'The transfer handler (routes/transactions.js) loads the same account twice, as sender and recipient, and saves both, ' +
         'so a self-transfer of X credits the account by X.',
       basis: 'a transfer moves money between accounts and never changes the total held: money is conserved.',
       fails: /Expected: 1000\s+Received: 1100/,

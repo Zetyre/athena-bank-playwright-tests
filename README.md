@@ -110,12 +110,11 @@ npx playwright install --with-deps
 
 No users need to exist beforehand: each test creates the users and accounts it needs, with throwaway data.
 
-| Variable               | Default                 | Purpose                                                                     |
-| ---------------------- | ----------------------- | --------------------------------------------------------------------------- |
-| `PLAYWRIGHT_BASE_URL`  | `http://localhost:3000` | Frontend under test                                                         |
-| `API_BASE_URL`         | `http://localhost:6007` | Backend API under test                                                      |
-| `PLAYWRIGHT_TEST_SEED` | random per run          | Replays the random transfer amounts of a run (recorded in each test's info) |
-| `CI`                   | unset                   | Set by CI: enables `forbidOnly`, one retry and the CI reporters             |
+| Variable              | Default                 | Purpose                                                         |
+| --------------------- | ----------------------- | --------------------------------------------------------------- |
+| `PLAYWRIGHT_BASE_URL` | `http://localhost:3000` | Frontend under test                                             |
+| `API_BASE_URL`        | `http://localhost:6007` | Backend API under test                                          |
+| `CI`                  | unset                   | Set by CI: enables `forbidOnly`, one retry and the CI reporters |
 
 ## Architecture
 
@@ -152,8 +151,8 @@ flowchart LR
 │   ├── athenaApi.ts             # Thin API client returning raw responses
 │   ├── accessibility.ts         # axe-core scan, run after animations settle
 │   ├── knownIssue.ts            # knownIssue(): marks a test that documents an open bug or observation
+│   ├── requests.ts              # countRequests(): proves a form blocked a submit without calling the API
 │   ├── userFactory.ts           # Unique test users
-│   ├── testRandom.ts            # Seeded random numbers
 │   └── urls.ts                  # Frontend/API base URLs from the environment
 ├── reporters/known-issues.ts    # Lists open bugs and observations, apart from real passes
 ├── scripts/                     # CI job summary and the GitHub Pages report archive
@@ -173,7 +172,7 @@ test(
   async ({ page, loginAs, createUser, randomAmount, sendMoneyModal, openDashboardInNewContext }) => {
     const sender = await createUser(); // fresh user with a funded account, created through the API
     const receiver = await createUser();
-    const amount = randomAmount(1, 1000); // reproducible with PLAYWRIGHT_TEST_SEED
+    const amount = randomAmount(1, 1000); // the amount used is recorded in the report
     const senderDashboard = await loginAs(sender);
 
     await test.step(`Send ${amount} to the receiver through the UI`, async () => {

@@ -29,12 +29,16 @@ All notable changes to this project are documented here. The format follows
   observations separately.
 - TC-005 also checks the redirect to login; TC-019 also checks the new account's balance, type and total.
 - README rewritten shorter.
+- `randomAmount` picks a plain `Math.random()` amount and records it in the report; the seeded hash helper and
+  `PLAYWRIGHT_TEST_SEED` are gone.
+- Tests that prove a form blocked a submit share one helper, `countRequests()`.
 
 ### Removed
 
 - On-screen contrast measurement from screenshot pixels (`measureTextContrast`) and its tests (TC-044, TC-045,
   TC-046, TC-050). axe-core scans stay; the contrast observations (#4, #8) stay documented with screenshots.
 - TC-001 and TC-013, which other tests already covered.
+- Unused code: `frontendUrl()` and `LoginPage.signUpLink`.
 
 ## [1.1.0] - 2026-11-06
 

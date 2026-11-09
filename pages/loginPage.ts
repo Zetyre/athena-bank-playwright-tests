@@ -6,14 +6,12 @@ export class LoginPage {
   readonly emailInput: Locator;
   readonly passwordInput: Locator;
   readonly loginButton: Locator;
-  readonly signUpLink: Locator;
 
   constructor(readonly page: Page) {
     this.title = page.getByTestId('titulo-login');
     this.emailInput = page.getByLabel('Correo electrónico');
     this.passwordInput = page.getByLabel('Contraseña');
     this.loginButton = page.getByTestId('boton-login');
-    this.signUpLink = page.getByTestId('link-registrarse-login');
   }
 
   async goto(): Promise<void> {

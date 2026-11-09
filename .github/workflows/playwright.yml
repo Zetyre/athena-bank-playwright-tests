@@ -78,7 +78,6 @@ jobs:
       JWT_SECRET: ci-only-throwaway-secret # Signs tokens for an ephemeral CI database only.
       PLAYWRIGHT_BASE_URL: http://localhost:3000
       API_BASE_URL: http://localhost:6007
-      PLAYWRIGHT_TEST_SEED: ${{ github.run_id }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

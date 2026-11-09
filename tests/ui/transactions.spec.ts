@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '../../fixtures';
+import { countRequests } from '../../utils/requests';
 
 test.describe('Accounts and transfers', () => {
   test(
@@ -42,16 +43,13 @@ test.describe('Accounts and transfers', () => {
       const sender = await createUser({ initialBalance: 50 });
       const receiver = await createUser();
       const dashboard = await loginAs(sender);
-      const transferRequests: string[] = [];
-      page.on('request', request => {
-        if (request.url().includes('/api/transactions/transfer')) transferRequests.push(request.url());
-      });
+      const transferRequests = countRequests(page, 'POST', '/api/transactions/transfer');
 
       await dashboard.sendMoneyButton.click();
       await sendMoneyModal.send(receiver.email, 51);
 
       await expect(sendMoneyModal.insufficientBalanceError).toBeVisible();
-      expect(transferRequests, 'The UI should not call the transfer API').toHaveLength(0);
+      expect(transferRequests(), 'The UI should not call the transfer API').toBe(0);
     },
   );
 
