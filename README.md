@@ -11,7 +11,7 @@ Vite frontend, Node/Express backend, MongoDB). The suite covers every feature of
 accounts, deposits, freezing, closing accounts, transfers and the transaction history, at the API layer and
 end-to-end in Chromium, Firefox and WebKit, plus WCAG 2.2 AA accessibility scans.
 
-- **79 test cases, 97 tests** (56 API + 41 UI × 3 browsers = 179 runs, two to three minutes locally), tagged
+- **79 test cases, 97 tests** (56 API + 41 UI × 3 browsers = 179 runs, about two minutes locally), tagged
   `@smoke` / `@regression`
 - **Fully parallel, no retries locally:** every test creates its own users through the API
 - **Found 13 bugs and 9 observations** in the app, each with steps to reproduce and annotated screenshots
@@ -105,6 +105,7 @@ npx playwright install --with-deps
 | `npm run test:regression` | Only tests tagged `@regression`                                 |
 | `npm run test:api`        | The API project, no browser                                     |
 | `npm run test:chromium`   | API plus Chromium, the fastest full check                       |
+| `npm run test:firefox`    | Firefox only (`test:webkit` for WebKit)                         |
 | `npm run report`          | Opens the last HTML report                                      |
 | `npm run check`           | Type-check, lint and format check, the same gate CI starts with |
 

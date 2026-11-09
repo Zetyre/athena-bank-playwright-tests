@@ -53,6 +53,8 @@ test.describe('Account management', () => {
         await expect(dashboard.page.getByRole('option', { name: new RegExp(`•••• ${last4}`) })).toBeDisabled();
         await dashboard.page.keyboard.press('Escape');
         await dashboard.page.keyboard.press('Escape');
+        // Wait for the dialog to finish closing, or its fading backdrop still covers the card's button.
+        await expect(sendMoneyModal.dialog).toBeHidden();
       });
 
       await test.step('Unfreeze it', async () => {
@@ -91,7 +93,7 @@ test.describe('Account management', () => {
       kind: 'bug',
       issue: 'Zetyre/redux-athena-bank#15',
       summary:
-        'App defect: Dashboard.tsx renders every account_closed event as "Cuenta de débito cerrada", ignoring ' +
+        'The dashboard (Dashboard.tsx) renders every account_closed event as "Cuenta de débito cerrada", ignoring ' +
         'the account type the backend recorded.',
       basis: 'the backend records the account type ("Cuenta de ahorros cerrada"), and the dashboard contradicts it.',
       fails:

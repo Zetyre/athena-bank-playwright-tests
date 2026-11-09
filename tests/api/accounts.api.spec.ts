@@ -53,11 +53,11 @@ test.describe('Accounts API: opening accounts', () => {
   });
 
   for (const [name, body] of [
-    ['unknown type', { type: 'gold', initialAmount: 100 }],
-    ['missing type', { initialAmount: 100 }],
+    ['an unknown type', { type: 'gold', initialAmount: 100 }],
+    ['no type', { initialAmount: 100 }],
   ] as const) {
     test(
-      `TC-064: Opening an account with an ${name} returns 400`,
+      `TC-064: Opening an account with ${name} returns 400`,
       { tag: '@regression' },
       async ({ api, request, createUser }) => {
         const user = await createUser({ initialBalance: null });
@@ -79,7 +79,7 @@ test.describe('Accounts API: opening accounts', () => {
       kind: 'bug',
       issue: 'Zetyre/redux-athena-bank#13',
       summary:
-        'App defect: POST /api/accounts stores initialAmount as given, so an account can start in debt ' +
+        'POST /api/accounts stores initialAmount as given, so an account can start in debt ' +
         '(the form blocks it, the API does not).',
       basis:
         'the app\'s own create-account form rejects negative amounts ("Monto debe ser un número mayor o igual a 0"), so the API should not accept them either.',
@@ -226,7 +226,7 @@ test.describe('Accounts API: ownership, freezing and closing', () => {
       kind: 'observation',
       issue: 'OBS-4',
       summary:
-        'App defect: DELETE /api/accounts/:id deletes an account whatever its balance; the money is gone and ' +
+        'DELETE /api/accounts/:id deletes an account whatever its balance; the money is gone and ' +
         'the dialog gives no warning.',
       basis: 'banking practice: an account that holds money is not closed without moving or confirming the funds.',
       fails: /Expected: 400\s+Received: 200/,

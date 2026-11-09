@@ -1,6 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 
 export class SendMoneyModal {
+  readonly dialog: Locator;
   readonly recipientEmailInput: Locator;
   readonly sourceAccountDropdown: Locator;
   readonly amountInput: Locator;
@@ -8,6 +9,7 @@ export class SendMoneyModal {
   readonly insufficientBalanceError: Locator;
 
   constructor(readonly page: Page) {
+    this.dialog = page.getByRole('dialog', { name: 'Enviar transferencia' });
     this.insufficientBalanceError = page.getByText('Saldo insuficiente');
     this.recipientEmailInput = page.getByRole('textbox', { name: 'Email del destinatario' });
     this.sourceAccountDropdown = page.getByRole('combobox', { name: 'Cuenta origen' });
