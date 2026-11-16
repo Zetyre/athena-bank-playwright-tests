@@ -42,9 +42,9 @@ a suite whose result you can trust.
 | ------------------------------------------------------------------------------------------------------------------------------------- |
 | ![GitHub Actions run with the lint job, four parallel browser jobs, report merge, publish and test gate](docs/images/ci-pipeline.png) |
 
-| HTML report: every test tagged and traceable                                                                           | Report archive on GitHub Pages                                                                         |
-| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| ![Playwright HTML report listing the login and sign-up tests with browser and tag labels](docs/images/html-report.png) | ![Report archive listing recent runs with pass, fail and flaky counts](docs/images/report-archive.png) |
+| HTML report: every test tagged and traceable                                                                                              | Report archive on GitHub Pages                                                                         |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| ![Playwright HTML report filtered to Chromium, with browser, tag, known-issue and bug or observation labels](docs/images/html-report.png) | ![Report archive listing recent runs with pass, fail and flaky counts](docs/images/report-archive.png) |
 
 ## Run it locally
 
