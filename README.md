@@ -14,7 +14,7 @@ end-to-end in Chromium, Firefox and WebKit, plus WCAG 2.2 AA accessibility scans
 - **79 test cases, 97 tests** (56 API + 41 UI × 3 browsers = 179 runs, about two minutes locally), tagged
   `@smoke` / `@regression`
 - **Fully parallel, no retries locally:** every test creates its own users through the API
-- **Found 13 bugs and 9 observations** in the app, each with steps to reproduce and annotated screenshots
+- **Found 17 bugs and 9 observations** in the app, each with steps to reproduce and annotated screenshots
   ([known issues](#known-issues))
 - **Every test documented:** what it checks, where its expected result comes from and how it is built, in the
   [test case catalogue](docs/test-cases.md)
